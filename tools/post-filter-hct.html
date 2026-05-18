@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<title>Post-filter Hematocrit · NephSim</title>
+<meta name="description" content="Predict the hematocrit leaving your CRRT filter — and the clot risk that comes with it." />
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
+    <nav class="nav-links">
+      <a href="filtration-fraction.html">FF</a>
+      <a href="post-filter-hct.html">Hct</a>
+      <a href="crrt-na.html">Sodium</a>
+      <a href="citrate.html">Citrate</a>
+      <a href="modalities.html">Modalities</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sim-shell">
+  <a class="sim-back" href="../">← All tools</a>
+  <p class="sim-eyebrow">Filter life</p>
+  <h1 class="sim-title">Post-filter Hematocrit</h1>
+  <p class="sim-lede">Plasma leaves. Red cells stay. The blood that exits your filter is always more concentrated than the blood that entered.</p>
+
+  <div class="sim-grid">
+
+    <aside class="panel">
+      <h2 class="panel-title">Inputs</h2>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Pre-filter Hct</span>
+          <span class="field-value"><span id="v-hct">28</span><span class="field-unit">%</span></span>
+        </div>
+        <input id="i-hct" type="range" min="15" max="55" step="1" value="28" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Blood flow (Qb)</span>
+          <span class="field-value"><span id="v-bfr">180</span><span class="field-unit">mL/min</span></span>
+        </div>
+        <input id="i-bfr" type="range" min="50" max="400" step="10" value="180" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Pre-dilution</span>
+          <span class="field-value"><span id="v-pre">1000</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-pre" type="range" min="0" max="4000" step="100" value="1000" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Post-dilution + Net UF</span>
+          <span class="field-value"><span id="v-post">1500</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-post" type="range" min="0" max="4500" step="100" value="1500" />
+      </div>
+    </aside>
+
+    <section class="result">
+      <p class="result-label">Post-filter Hct</p>
+      <p class="result-big" id="r-hct">—<span class="result-unit">%</span></p>
+      <p class="result-caption" id="r-msg">Adjust the inputs to see the Hct rise across your filter.</p>
+      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Safe</span>
+
+      <!-- Filter visualization -->
+      <div style="margin-top:30px;">
+        <svg id="filter-svg" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="bloodGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"  stop-color="#c0334e" id="grad-in"/>
+              <stop offset="100%" stop-color="#7a1828" id="grad-out"/>
+            </linearGradient>
+            <linearGradient id="filterStroke" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.8"/>
+            </linearGradient>
+          </defs>
+          <!-- inlet -->
+          <rect x="0" y="46" width="60" height="28" rx="10" fill="#c0334e"/>
+          <!-- filter body -->
+          <rect x="60" y="34" width="280" height="52" rx="14" fill="url(#bloodGrad)" stroke="url(#filterStroke)" stroke-width="2"/>
+          <!-- fiber lines -->
+          <g stroke="rgba(255,255,255,0.08)" stroke-width="1">
+            <line x1="60" y1="42" x2="340" y2="42"/>
+            <line x1="60" y1="50" x2="340" y2="50"/>
+            <line x1="60" y1="58" x2="340" y2="58"/>
+            <line x1="60" y1="66" x2="340" y2="66"/>
+            <line x1="60" y1="74" x2="340" y2="74"/>
+            <line x1="60" y1="82" x2="340" y2="82"/>
+          </g>
+          <!-- outlet -->
+          <rect x="340" y="46" width="60" height="28" rx="10" fill="#7a1828" id="outlet"/>
+          <!-- labels -->
+          <text x="30" y="22" fill="var(--text-muted)" font-size="10" font-family="-apple-system,sans-serif" text-anchor="middle">PRE</text>
+          <text x="30" y="108" fill="var(--text-soft)" font-size="11" font-family="-apple-system,sans-serif" text-anchor="middle" id="lbl-in">—%</text>
+          <text x="370" y="22" fill="var(--text-muted)" font-size="10" font-family="-apple-system,sans-serif" text-anchor="middle">POST</text>
+          <text x="370" y="108" fill="var(--text-soft)" font-size="11" font-family="-apple-system,sans-serif" text-anchor="middle" id="lbl-out">—%</text>
+        </svg>
+      </div>
+
+      <div class="result-stats">
+        <div>
+          <p class="stat-label">Hct rise</p>
+          <p class="stat-value"><span id="r-rise">—</span><span class="stat-unit">×</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Filter inlet Hct</p>
+          <p class="stat-value"><span id="r-in">—</span><span class="stat-unit">%</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Pre-dilution effect</p>
+          <p class="stat-value"><span id="r-dilute">—</span><span class="stat-unit">%</span></p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="explainer">
+    <details open>
+      <summary>How this works</summary>
+      <div class="explainer-body">
+        <p>Red cells don't cross the membrane — so as plasma is filtered off, the same red cell mass occupies a smaller volume. The math is conservation of red cell flux:</p>
+        <p><span class="formula">Hct<sub>post</sub> = (Q<sub>b</sub> × Hct<sub>pre</sub>) / (Q<sub>b</sub> − Q<sub>post</sub> − Q<sub>net UF</sub>)</span></p>
+        <p>Pre-dilution dilutes the blood <em>before</em> the filter, lowering the effective Hct entering the membrane and giving you headroom:</p>
+        <p><span class="formula">Hct<sub>inlet</sub> = Q<sub>b</sub> × Hct<sub>pre</sub> / (Q<sub>b</sub> + Q<sub>pre</sub>)</span></p>
+        <p><strong>Targets.</strong> Keep post-filter Hct below ~40% if you can; 40–50% is workable but filter life shortens; above 50% expect frequent clotting. The single most powerful lever is pre-dilution.</p>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner"><p>NephSim · for educational use only · not a substitute for clinical judgment</p></div>
+</footer>
+
+<script src="../assets/js/shared.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['hct','bfr','pre','post'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+
+  function compute() {
+    inputs.forEach(i => i.v.textContent = i.el.value);
+    const Hct  = parseFloat($('i-hct').value);     // %
+    const BFR  = parseFloat($('i-bfr').value);     // mL/min
+    const Qpre = parseFloat($('i-pre').value)/60;  // mL/min
+    const Qpost = parseFloat($('i-post').value)/60;// mL/min (post + net UF combined)
+
+    // Effective Hct entering filter membrane (after pre-dilution mixing)
+    const HctIn = (BFR * Hct) / (BFR + Qpre);
+    // Hct exiting filter (blood-side outflow)
+    const denom = BFR - Qpost;
+    const HctOut = denom > 0 ? (BFR * Hct) / denom : NaN;
+    const rise = HctOut / Hct;
+    const dilutionEffect = Hct - HctIn; // how much pre-dilution helps
+
+    $('r-hct').innerHTML = NephSim.fmt.one(HctOut) + '<span class="result-unit">%</span>';
+    $('r-in').textContent = NephSim.fmt.one(HctIn);
+    $('r-rise').textContent = Number.isFinite(rise) ? rise.toFixed(2) : '—';
+    $('r-dilute').textContent = NephSim.fmt.one(dilutionEffect);
+
+    $('lbl-in').textContent = NephSim.fmt.one(HctIn) + '%';
+    $('lbl-out').textContent = NephSim.fmt.one(HctOut) + '%';
+
+    // Visualize: darker red gradient with rising Hct
+    const c = (h) => {
+      // map Hct 15–60% to lightness in HSL
+      const clamp = Math.max(15, Math.min(60, h));
+      const l = 50 - (clamp - 15) * 0.6; // 50 → 23
+      return `hsl(350, 60%, ${l}%)`;
+    };
+    document.getElementById('grad-in').setAttribute('stop-color', c(HctIn));
+    document.getElementById('grad-out').setAttribute('stop-color', c(HctOut));
+    document.querySelector('rect[x="0"]').setAttribute('fill', c(HctIn));
+    document.getElementById('outlet').setAttribute('fill', c(HctOut));
+
+    const r = $('r-hct');
+    const chip = $('r-chip');
+    r.classList.remove('is-good','is-warn','is-bad');
+    chip.classList.remove('chip-good','chip-warn','chip-bad');
+    let msg, txt;
+    if (!Number.isFinite(HctOut) || HctOut > 100) {
+      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      msg = 'Removal exceeds available plasma — physically impossible. Reduce post-dilution or net UF.';
+      txt = 'Impossible';
+    } else if (HctOut < 40) {
+      r.classList.add('is-good'); chip.classList.add('chip-good');
+      msg = 'Healthy headroom for filter life.';
+      txt = 'Safe';
+    } else if (HctOut < 50) {
+      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      msg = 'Workable — but expect a shorter circuit. Pre-dilution helps most.';
+      txt = 'Caution';
+    } else {
+      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      msg = 'Expect frequent clotting. Add pre-dilution, raise Qb, or reduce post-dilution/net UF.';
+      txt = 'High risk';
+    }
+    chip.innerHTML = '<span class="chip-dot"></span> ' + txt;
+    $('r-msg').textContent = msg;
+  }
+
+  inputs.forEach(i => i.el.addEventListener('input', compute));
+  compute();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<title>Citrate &amp; Calcium · NephSim</title>
+<meta name="description" content="Regional citrate anticoagulation calculator: citrate dose, infusion rate, and calcium replacement." />
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
+    <nav class="nav-links">
+      <a href="filtration-fraction.html">FF</a>
+      <a href="post-filter-hct.html">Hct</a>
+      <a href="crrt-na.html">Sodium</a>
+      <a href="citrate.html">Citrate</a>
+      <a href="modalities.html">Modalities</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sim-shell">
+  <a class="sim-back" href="../">← All tools</a>
+  <p class="sim-eyebrow">Regional anticoagulation</p>
+  <h1 class="sim-title">Citrate &amp; Calcium</h1>
+  <p class="sim-lede">Pick your citrate solution and your dose target. Get a starting infusion rate and a matched calcium drip.</p>
+
+  <div class="sim-grid">
+
+    <aside class="panel">
+      <h2 class="panel-title">Inputs</h2>
+
+      <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Citrate solution</div>
+        <select id="i-sol" class="input-text">
+          <option value="18">Prismocitrate / Regiocit 18 — 18 mmol/L</option>
+          <option value="12">Prismocitrate 10/2 — 12 mmol/L (citrate equiv.)</option>
+          <option value="113">ACD-A — 113 mmol/L</option>
+          <option value="136">Trisodium citrate 4% — 136 mmol/L</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Blood flow (Qb)</span>
+          <span class="field-value"><span id="v-bfr">120</span><span class="field-unit">mL/min</span></span>
+        </div>
+        <input id="i-bfr" type="range" min="60" max="300" step="10" value="120" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Target citrate dose</span>
+          <span class="field-value"><span id="v-dose">3.0</span><span class="field-unit">mmol/L blood</span></span>
+        </div>
+        <input id="i-dose" type="range" min="2.0" max="5.0" step="0.1" value="3.0" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Total effluent</span>
+          <span class="field-value"><span id="v-eff">2000</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-eff" type="range" min="1000" max="4500" step="100" value="2000" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Patient total Ca</span>
+          <span class="field-value"><span id="v-pca">2.2</span><span class="field-unit">mmol/L</span></span>
+        </div>
+        <input id="i-pca" type="range" min="1.8" max="2.8" step="0.05" value="2.2" />
+      </div>
+
+      <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Calcium solution</div>
+        <div class="segmented" id="seg-ca">
+          <button class="active" data-value="gluc">Ca gluconate 10%</button>
+          <button data-value="chl">Ca chloride 10%</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.4;">Gluconate: 0.225 mmol/mL elemental Ca · Chloride: 0.68 mmol/mL elemental Ca</p>
+      </div>
+    </aside>
+
+    <section class="result">
+      <p class="result-label">Citrate infusion</p>
+      <p class="result-big" id="r-rate">—<span class="result-unit">mL/h</span></p>
+      <p class="result-caption" id="r-msg">Pre-filter, into the access limb. Titrate to post-filter iCa 0.25–0.35 mmol/L.</p>
+
+      <div class="result-stats">
+        <div>
+          <p class="stat-label">Citrate delivered</p>
+          <p class="stat-value"><span id="r-mmolh">—</span><span class="stat-unit">mmol/h</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Calcium replacement</p>
+          <p class="stat-value"><span id="r-cah">—</span><span class="stat-unit">mL/h</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Ca delivered</p>
+          <p class="stat-value"><span id="r-camol">—</span><span class="stat-unit">mmol/h</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Bicarb load</p>
+          <p class="stat-value"><span id="r-bicarb">—</span><span class="stat-unit">mmol/h</span></p>
+        </div>
+      </div>
+
+      <table class="tbl" style="margin-top:24px;">
+        <thead><tr><th>Monitor</th><th>Target</th><th>If high</th></tr></thead>
+        <tbody>
+          <tr><td>Post-filter iCa</td><td>0.25 – 0.35 mmol/L</td><td>↓ citrate rate</td></tr>
+          <tr><td>Systemic iCa</td><td>1.0 – 1.2 mmol/L</td><td>↑ Ca infusion</td></tr>
+          <tr><td>Total Ca / iCa ratio</td><td>&lt; 2.5</td><td>Citrate accumulation — pause citrate</td></tr>
+          <tr><td>Bicarb / pH</td><td>22–28 / 7.35–7.45</td><td>↓ citrate dose; consider lower-bicarb dialysate</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <div class="explainer">
+    <details open>
+      <summary>How this works</summary>
+      <div class="explainer-body">
+        <p><strong>The idea.</strong> Citrate chelates ionized calcium in the circuit, so coagulation can't proceed in the filter. Post-filter calcium is given back into the venous return to restore systemic ionized Ca.</p>
+        <p><strong>Citrate infusion rate.</strong></p>
+        <p><span class="formula">Rate (mL/h) = (Dose × Q<sub>b</sub> × 60) / [citrate]</span></p>
+        <p>Q<sub>b</sub> in mL/min, dose in mmol/L blood, concentration in mmol/L. Typical adult dose is 3 mmol/L blood flow.</p>
+        <p><strong>Calcium replacement.</strong> A fraction of total Ca (~60%) is bound to citrate and lost in the effluent. The starting Ca infusion estimates this loss:</p>
+        <p><span class="formula">Ca loss (mmol/h) ≈ 0.6 × Q<sub>effluent</sub> × [Ca]<sub>total</sub></span></p>
+        <p>Then convert to mL/h based on whichever Ca solution you're using. Always titrate to systemic iCa.</p>
+        <p><strong>Bicarbonate.</strong> Each citrate molecule, when metabolized (mostly hepatic), yields 3 bicarbonate equivalents. About half the infused citrate is removed in effluent before reaching systemic circulation, so the simulator estimates the net patient bicarb load as <em>citrate × 1.5</em>. Useful when choosing a lower-bicarb dialysate to prevent alkalosis.</p>
+        <p><strong>Watch out for accumulation.</strong> Liver failure or hypoperfusion → citrate accumulates → Ca-citrate complex builds → measured total Ca rises, iCa falls. <em>Total Ca / iCa &gt; 2.5</em> is the classic flag.</p>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner"><p>NephSim · for educational use only · not a substitute for clinical judgment</p></div>
+</footer>
+
+<script src="../assets/js/shared.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['bfr','dose','eff','pca'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+  let caSol = 'gluc'; // gluc = 0.225 mmol/mL ; chl = 0.68 mmol/mL
+
+  NephSim.bindSegmented($('seg-ca'), (val) => { caSol = val; compute(); });
+  $('i-sol').addEventListener('change', compute);
+
+  function compute() {
+    inputs.forEach(i => i.v.textContent = i.el.value);
+    const BFR = parseFloat($('i-bfr').value);             // mL/min
+    const dose = parseFloat($('i-dose').value);           // mmol/L blood
+    const conc = parseFloat($('i-sol').value);            // mmol/L of citrate solution
+    const Qeff_mLh = parseFloat($('i-eff').value);
+    const pCa  = parseFloat($('i-pca').value);            // mmol/L
+
+    // Citrate infusion rate (mL/h)
+    // Dose (mmol/L blood) × Q_blood (L/h)  → mmol/h
+    // Q_blood (L/h) = BFR (mL/min) × 60 / 1000
+    const Qblood_Lh = BFR * 60 / 1000;
+    const citrate_mmolh = dose * Qblood_Lh;
+    const rate_mLh = citrate_mmolh / conc * 1000;
+
+    // Ca loss in effluent (mmol/h)
+    const Qeff_Lh = Qeff_mLh / 1000;
+    const caLoss_mmolh = 0.6 * Qeff_Lh * pCa;
+
+    // Ca replacement rate
+    const caConc = caSol === 'gluc' ? 0.225 : 0.68; // mmol/mL elemental
+    const ca_mLh = caLoss_mmolh / caConc;
+
+    // Bicarb equivalents — each citrate metabolized = 3 bicarb, but ~50% of citrate is
+    // removed in effluent before reaching systemic circulation, so effective bicarb load
+    // to the patient ≈ citrate × 1.5
+    const bicarb_mmolh = citrate_mmolh * 1.5;
+
+    $('r-rate').innerHTML = NephSim.fmt.int(rate_mLh) + '<span class="result-unit">mL/h</span>';
+    $('r-mmolh').textContent = NephSim.fmt.one(citrate_mmolh);
+    $('r-cah').textContent = NephSim.fmt.one(ca_mLh);
+    $('r-camol').textContent = NephSim.fmt.one(caLoss_mmolh);
+    $('r-bicarb').textContent = NephSim.fmt.int(bicarb_mmolh);
+
+    // Color status — flag extreme rates
+    const r = $('r-rate');
+    r.classList.remove('is-good','is-warn','is-bad');
+    if (rate_mLh > 350) r.classList.add('is-warn');
+    if (bicarb_mmolh > 30) {
+      $('r-msg').textContent = 'High bicarb load — consider a lower-bicarb dialysate to prevent metabolic alkalosis.';
+    } else if (rate_mLh > 350) {
+      $('r-msg').textContent = 'Large citrate volume — watch for hypernatremia and bicarbonate excess.';
+    } else {
+      $('r-msg').textContent = 'Pre-filter, into the access limb. Titrate to post-filter iCa 0.25–0.35 mmol/L.';
+    }
+  }
+
+  inputs.forEach(i => i.el.addEventListener('input', compute));
+  compute();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<title>CRRT Sodium · NephSim</title>
+<meta name="description" content="Custom-Na CRRT simulator. Predict serum sodium trajectory and stay within safe correction limits." />
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
+    <nav class="nav-links">
+      <a href="filtration-fraction.html">FF</a>
+      <a href="post-filter-hct.html">Hct</a>
+      <a href="crrt-na.html">Sodium</a>
+      <a href="citrate.html">Citrate</a>
+      <a href="modalities.html">Modalities</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sim-shell">
+  <a class="sim-back" href="../">← All tools</a>
+  <p class="sim-eyebrow">Dysnatremia</p>
+  <h1 class="sim-title">CRRT Sodium</h1>
+  <p class="sim-lede">Build a custom dialysate Na and watch the 24-hour trajectory. Stay inside the safe-correction band — or see exactly when you'll leave it.</p>
+
+  <div class="sim-grid">
+
+    <aside class="panel">
+      <h2 class="panel-title">Inputs</h2>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Starting serum Na</span>
+          <span class="field-value"><span id="v-na0">115</span><span class="field-unit">mEq/L</span></span>
+        </div>
+        <input id="i-na0" type="range" min="100" max="180" step="1" value="115" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Dialysate / replacement Na</span>
+          <span class="field-value"><span id="v-naf">125</span><span class="field-unit">mEq/L</span></span>
+        </div>
+        <input id="i-naf" type="range" min="100" max="160" step="1" value="125" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Total effluent</span>
+          <span class="field-value"><span id="v-eff">2500</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-eff" type="range" min="1000" max="5000" step="100" value="2500" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Weight</span>
+          <span class="field-value"><span id="v-wt">70</span><span class="field-unit">kg</span></span>
+        </div>
+        <input id="i-wt" type="range" min="40" max="180" step="1" value="70" />
+      </div>
+
+      <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Total body water</div>
+        <div class="segmented" id="seg-tbw">
+          <button class="active" data-value="0.6">Male (0.6)</button>
+          <button data-value="0.5">Female (0.5)</button>
+          <button data-value="0.55">Elderly (0.55)</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Pattern of dysnatremia</span>
+        </div>
+        <div class="segmented" id="seg-acute">
+          <button class="active" data-value="chronic">Chronic / unknown</button>
+          <button data-value="acute">Acute (&lt;48h)</button>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.4;">Chronic hyponatremia: limit ΔNa to 8 mEq/L per 24h. Acute: up to 10–12 mEq/L tolerated.</p>
+      </div>
+    </aside>
+
+    <section class="result">
+      <p class="result-label">Predicted Na at 24 h</p>
+      <p class="result-big" id="r-na24">—<span class="result-unit">mEq/L</span></p>
+      <p class="result-caption" id="r-msg">Adjust the dialysate Na and watch how serum Na approaches it over time.</p>
+      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Within limits</span>
+
+      <div class="result-stats">
+        <div>
+          <p class="stat-label">ΔNa over 24 h</p>
+          <p class="stat-value"><span id="r-delta">—</span><span class="stat-unit">mEq/L</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Time to limit</p>
+          <p class="stat-value"><span id="r-tlim">—</span><span class="stat-unit">h</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Time constant τ</p>
+          <p class="stat-value"><span id="r-tau">—</span><span class="stat-unit">h</span></p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Trajectory chart -->
+  <div class="chart-wrap">
+    <p class="panel-title" style="margin:0 0 18px;">24-hour Na trajectory</p>
+    <svg id="chart" viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="font-family:-apple-system,sans-serif;">
+      <!-- axes drawn dynamically -->
+    </svg>
+  </div>
+
+  <div class="explainer">
+    <details open>
+      <summary>How this works</summary>
+      <div class="explainer-body">
+        <p>Sodium in CRRT follows simple first-order kinetics. The clearance for Na ≈ the total effluent rate (sieving coefficient ≈ 1).</p>
+        <p>Serum Na approaches the dialysate Na exponentially:</p>
+        <p><span class="formula">Na(t) = Na<sub>fluid</sub> + (Na<sub>0</sub> − Na<sub>fluid</sub>) × e<sup>−t/τ</sup></span></p>
+        <p>where the time constant <span class="formula">τ = TBW / Q<sub>eff</sub></span> (use compatible units — L and L/h).</p>
+        <p><strong>Why this matters.</strong> With chronic hyponatremia, the goal is &lt;8 mEq/L correction in 24 h. Standard dialysate (Na 140) corrects far too fast on a patient at Na 115. A custom dialysate of 125 closes the gap slowly — and you can step it up day by day.</p>
+        <p><strong>The trick.</strong> The asymptote is the fluid Na itself. Pick a fluid Na that, even if left running indefinitely, won't overshoot your 24-hour goal. The simulator shades the safe band.</p>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner"><p>NephSim · for educational use only · not a substitute for clinical judgment</p></div>
+</footer>
+
+<script src="../assets/js/shared.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['na0','naf','eff','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+  let tbwFrac = 0.6;
+  let pattern = 'chronic';
+
+  NephSim.bindSegmented($('seg-tbw'), (val) => { tbwFrac = parseFloat(val); compute(); });
+  NephSim.bindSegmented($('seg-acute'), (val) => { pattern = val; compute(); });
+
+  function compute() {
+    inputs.forEach(i => i.v.textContent = i.el.value);
+    const Na0 = parseFloat($('i-na0').value);
+    const Naf = parseFloat($('i-naf').value);
+    const Qeff_mLh = parseFloat($('i-eff').value);
+    const Wt = parseFloat($('i-wt').value);
+    const TBW_L = Wt * tbwFrac;
+    const Qeff_Lh = Qeff_mLh / 1000;
+    const tau = TBW_L / Qeff_Lh; // hours
+
+    // Predicted Na(t)
+    const Na = (t) => Naf + (Na0 - Naf) * Math.exp(-t / tau);
+    const Na24 = Na(24);
+    const delta24 = Na24 - Na0;
+
+    // Determine the user's safe correction limit
+    const isHypo = Na0 < 135;
+    const limit = pattern === 'chronic' ? 8 : 10; // mEq/L per 24h
+    const dir = Naf > Na0 ? 1 : (Naf < Na0 ? -1 : 0);
+    // signed delta in direction of correction
+    const absDelta24 = Math.abs(delta24);
+
+    // Time at which |ΔNa| reaches limit
+    // |Na(t) - Na0| = |Naf - Na0| × (1 - e^(-t/τ)) = limit
+    // → t = -τ × ln(1 - limit/|Naf-Na0|)
+    const gap = Math.abs(Naf - Na0);
+    let tLimit = NaN;
+    if (gap > 0 && limit < gap) tLimit = -tau * Math.log(1 - limit / gap);
+
+    $('r-na24').innerHTML = NephSim.fmt.one(Na24) + '<span class="result-unit">mEq/L</span>';
+    $('r-delta').textContent = (delta24 >= 0 ? '+' : '') + NephSim.fmt.one(delta24);
+    $('r-tlim').textContent = Number.isFinite(tLimit) ? NephSim.fmt.one(tLimit) : '> 24';
+    $('r-tau').textContent = NephSim.fmt.one(tau);
+
+    const r = $('r-na24');
+    const chip = $('r-chip');
+    r.classList.remove('is-good','is-warn','is-bad');
+    chip.classList.remove('chip-good','chip-warn','chip-bad');
+    let msg, txt;
+    if (absDelta24 <= limit) {
+      r.classList.add('is-good'); chip.classList.add('chip-good');
+      msg = `Stays within the ${limit} mEq/L / 24 h limit.`;
+      txt = 'Within limits';
+    } else if (absDelta24 <= limit + 4) {
+      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      msg = `Will exceed the ${limit} mEq/L limit at ${NephSim.fmt.one(tLimit)} h. Narrow the gap.`;
+      txt = 'Borderline';
+    } else {
+      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      msg = `Overcorrection risk. ΔNa hits ${limit} mEq/L at ${NephSim.fmt.one(tLimit)} h — bring dialysate Na closer to serum Na.`;
+      txt = 'Overcorrects';
+    }
+    chip.innerHTML = '<span class="chip-dot"></span> ' + txt;
+    $('r-msg').textContent = msg;
+
+    drawChart(Na, Na0, limit, tLimit);
+  }
+
+  function drawChart(NaFn, Na0, limit, tLimit) {
+    const svg = $('chart');
+    const W = 700, H = 260;
+    const pad = { l: 56, r: 18, t: 18, b: 36 };
+
+    // Y range — auto fit
+    const samples = [];
+    for (let t = 0; t <= 24; t += 0.25) samples.push(NaFn(t));
+    let yMin = Math.min(...samples, Na0) - 2;
+    let yMax = Math.max(...samples, Na0) + 2;
+    // round to 1
+    yMin = Math.floor(yMin); yMax = Math.ceil(yMax);
+    if (yMax - yMin < 6) { const m = (yMin+yMax)/2; yMin = m - 3; yMax = m + 3; }
+
+    const x = (t) => pad.l + (t/24) * (W - pad.l - pad.r);
+    const y = (v) => pad.t + (1 - (v - yMin)/(yMax - yMin)) * (H - pad.t - pad.b);
+
+    // Build path
+    let d = '';
+    samples.forEach((v, i) => {
+      const t = i * 0.25;
+      d += (i === 0 ? 'M' : 'L') + x(t).toFixed(1) + ',' + y(v).toFixed(1) + ' ';
+    });
+
+    // Safe band (Na0 ± limit) — only show the relevant side
+    const safeHi = Na0 + limit;
+    const safeLo = Na0 - limit;
+    const bandTop = y(Math.min(yMax, safeHi));
+    const bandBot = y(Math.max(yMin, safeLo));
+
+    // Gridlines (Y) — every step of round
+    const stepY = (yMax - yMin) <= 12 ? 2 : 5;
+    let yGrid = '';
+    for (let v = Math.ceil(yMin); v <= yMax; v++) {
+      if (v % stepY === 0) {
+        yGrid += `<line x1="${pad.l}" x2="${W-pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line-soft)" stroke-width="1"/>`;
+        yGrid += `<text x="${pad.l-10}" y="${y(v)+4}" fill="var(--text-muted)" font-size="11" text-anchor="end">${v}</text>`;
+      }
+    }
+    // X axis ticks every 4h
+    let xGrid = '';
+    for (let t = 0; t <= 24; t += 4) {
+      xGrid += `<line x1="${x(t)}" x2="${x(t)}" y1="${H-pad.b}" y2="${H-pad.b+4}" stroke="var(--text-muted)" stroke-width="1"/>`;
+      xGrid += `<text x="${x(t)}" y="${H-pad.b+20}" fill="var(--text-muted)" font-size="11" text-anchor="middle">${t}h</text>`;
+    }
+
+    // Limit-time vertical line
+    let limitLine = '';
+    if (Number.isFinite(tLimit) && tLimit <= 24) {
+      limitLine = `<line x1="${x(tLimit)}" x2="${x(tLimit)}" y1="${pad.t}" y2="${H-pad.b}" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="3 4"/>
+      <text x="${x(tLimit)+6}" y="${pad.t+14}" fill="var(--bad)" font-size="11">limit @ ${tLimit.toFixed(1)}h</text>`;
+    }
+
+    svg.innerHTML = `
+      <rect x="${pad.l}" y="${bandTop}" width="${W - pad.l - pad.r}" height="${bandBot - bandTop}" fill="rgba(52,168,83,0.10)"/>
+      ${yGrid}${xGrid}
+      <line x1="${pad.l}" x2="${pad.l}" y1="${pad.t}" y2="${H-pad.b}" stroke="var(--line)" stroke-width="1"/>
+      <line x1="${pad.l}" x2="${W-pad.r}" y1="${H-pad.b}" y2="${H-pad.b}" stroke="var(--line)" stroke-width="1"/>
+      <line x1="${pad.l}" x2="${W-pad.r}" y1="${y(Na0)}" y2="${y(Na0)}" stroke="var(--text-muted)" stroke-width="1" stroke-dasharray="3 4"/>
+      <text x="${W-pad.r-4}" y="${y(Na0)-6}" fill="var(--text-muted)" font-size="11" text-anchor="end">start ${Na0}</text>
+      <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      ${limitLine}
+      <text x="${pad.l}" y="${pad.t-2}" fill="var(--text-muted)" font-size="11">Na, mEq/L</text>
+    `;
+  }
+
+  inputs.forEach(i => i.el.addEventListener('input', compute));
+  compute();
+})();
+</script>
+</body>
+</html>

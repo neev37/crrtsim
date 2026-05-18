@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<title>Modalities &amp; SCUF · NephSim</title>
+<meta name="description" content="CVVH, CVVHD, CVVHDF and SCUF — compared, explained, and an interactive SCUF rate calculator." />
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
+    <nav class="nav-links">
+      <a href="filtration-fraction.html">FF</a>
+      <a href="post-filter-hct.html">Hct</a>
+      <a href="crrt-na.html">Sodium</a>
+      <a href="citrate.html">Citrate</a>
+      <a href="modalities.html">Modalities</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sim-shell">
+  <a class="sim-back" href="../">← All tools</a>
+  <p class="sim-eyebrow">Therapy</p>
+  <h1 class="sim-title">Modalities &amp; SCUF</h1>
+  <p class="sim-lede">Four flavors of continuous therapy — convection, diffusion, both, or neither. Plus a no-fuss net-UF calculator for SCUF.</p>
+
+  <!-- Modality comparison -->
+  <div class="modality-grid">
+    <div class="mod-card">
+      <span class="mod-tag">Convection</span>
+      <h3>CVVH</h3>
+      <p style="color:var(--text-muted);margin:6px 0 0;font-size:14px;">Continuous venovenous hemofiltration</p>
+      <ul>
+        <li>Replacement fluid (pre &/or post)</li>
+        <li>No dialysate</li>
+        <li>Clears middle molecules better</li>
+        <li>Effluent dose = replacement + net UF</li>
+      </ul>
+    </div>
+    <div class="mod-card">
+      <span class="mod-tag">Diffusion</span>
+      <h3>CVVHD</h3>
+      <p style="color:var(--text-muted);margin:6px 0 0;font-size:14px;">Continuous venovenous hemodialysis</p>
+      <ul>
+        <li>Dialysate, no replacement</li>
+        <li>Lowest filtration fraction</li>
+        <li>Best when clotting is a worry</li>
+        <li>Effluent dose = dialysate + net UF</li>
+      </ul>
+    </div>
+    <div class="mod-card">
+      <span class="mod-tag">Both</span>
+      <h3>CVVHDF</h3>
+      <p style="color:var(--text-muted);margin:6px 0 0;font-size:14px;">Hemodiafiltration</p>
+      <ul>
+        <li>Replacement + dialysate</li>
+        <li>Most flexible — split as you like</li>
+        <li>Small &amp; mid solute clearance</li>
+        <li>Effluent dose = all components</li>
+      </ul>
+    </div>
+    <div class="mod-card">
+      <span class="mod-tag">UF only</span>
+      <h3>SCUF</h3>
+      <p style="color:var(--text-muted);margin:6px 0 0;font-size:14px;">Slow continuous ultrafiltration</p>
+      <ul>
+        <li>No solute clearance</li>
+        <li>Volume removal only</li>
+        <li>Diuretic-resistant CHF</li>
+        <li>Effluent = net UF</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SCUF calculator -->
+  <h2 style="margin:64px 0 8px;font-size:clamp(28px,3.5vw,40px);letter-spacing:-0.025em;font-weight:700;">SCUF · Net UF calculator</h2>
+  <p style="color:var(--text-soft);font-size:17px;margin:0 0 32px;letter-spacing:-0.005em;">Tell me how much fluid to take off and how long you have. I'll set the hourly rate.</p>
+
+  <div class="sim-grid">
+
+    <aside class="panel">
+      <h2 class="panel-title">Inputs</h2>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Target net removal</span>
+          <span class="field-value"><span id="v-tgt">3000</span><span class="field-unit">mL</span></span>
+        </div>
+        <input id="i-tgt" type="range" min="500" max="8000" step="100" value="3000" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Over duration</span>
+          <span class="field-value"><span id="v-dur">12</span><span class="field-unit">h</span></span>
+        </div>
+        <input id="i-dur" type="range" min="2" max="48" step="1" value="12" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Weight</span>
+          <span class="field-value"><span id="v-wt">70</span><span class="field-unit">kg</span></span>
+        </div>
+        <input id="i-wt" type="range" min="40" max="180" step="1" value="70" />
+      </div>
+    </aside>
+
+    <section class="result">
+      <p class="result-label">Hourly net UF rate</p>
+      <p class="result-big" id="r-rate">—<span class="result-unit">mL/h</span></p>
+      <p class="result-caption" id="r-msg">Adjust target volume and time to set the hourly rate.</p>
+      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Tolerable</span>
+
+      <div class="result-stats">
+        <div>
+          <p class="stat-label">Rate per kg</p>
+          <p class="stat-value"><span id="r-kg">—</span><span class="stat-unit">mL/kg/h</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Volume in 1 h</p>
+          <p class="stat-value"><span id="r-1h">—</span><span class="stat-unit">mL</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Volume in 6 h</p>
+          <p class="stat-value"><span id="r-6h">—</span><span class="stat-unit">mL</span></p>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="explainer">
+    <details open>
+      <summary>How fast is too fast?</summary>
+      <div class="explainer-body">
+        <p>Refilling rate from the interstitium to the vascular space is roughly 5–10 mL/kg/h. UF rates that outpace this will drop preload faster than the body can refill the circulation, leading to intradialytic hypotension and end-organ injury.</p>
+        <p>Common bedside framing:</p>
+        <p><span class="formula">Safe range ≈ ≤ 5 mL/kg/h · Caution 5–10 · High &gt; 10</span></p>
+        <p>Higher rates are sometimes necessary (decompensated CHF, anasarca) but earn closer hemodynamic surveillance.</p>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner"><p>NephSim · for educational use only · not a substitute for clinical judgment</p></div>
+</footer>
+
+<script src="../assets/js/shared.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['tgt','dur','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+
+  function compute() {
+    inputs.forEach(i => i.v.textContent = i.el.value);
+    const tgt = parseFloat($('i-tgt').value);
+    const dur = parseFloat($('i-dur').value);
+    const wt = parseFloat($('i-wt').value);
+    const rate = tgt / dur;
+    const perKg = rate / wt;
+
+    $('r-rate').innerHTML = NephSim.fmt.int(rate) + '<span class="result-unit">mL/h</span>';
+    $('r-kg').textContent = NephSim.fmt.one(perKg);
+    $('r-1h').textContent = NephSim.fmt.int(rate);
+    $('r-6h').textContent = NephSim.fmt.int(rate * 6);
+
+    const r = $('r-rate');
+    const chip = $('r-chip');
+    r.classList.remove('is-good','is-warn','is-bad');
+    chip.classList.remove('chip-good','chip-warn','chip-bad');
+    let msg, txt;
+    if (perKg <= 5) {
+      r.classList.add('is-good'); chip.classList.add('chip-good');
+      msg = 'Within typical refilling capacity.'; txt = 'Tolerable';
+    } else if (perKg <= 10) {
+      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      msg = 'May outpace plasma refill. Watch MAP closely.'; txt = 'Caution';
+    } else {
+      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      msg = 'High UF — hemodynamic instability likely. Consider lengthening the duration.'; txt = 'High';
+    }
+    chip.innerHTML = '<span class="chip-dot"></span> ' + txt;
+    $('r-msg').textContent = msg;
+  }
+
+  inputs.forEach(i => i.el.addEventListener('input', compute));
+  compute();
+})();
+</script>
+</body>
+</html>

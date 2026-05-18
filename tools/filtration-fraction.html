@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<title>Filtration Fraction · NephSim</title>
+<meta name="description" content="Live CRRT filtration fraction simulator. See hemoconcentration risk in real time." />
+<link rel="stylesheet" href="../assets/css/styles.css" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
+    <nav class="nav-links">
+      <a href="filtration-fraction.html">FF</a>
+      <a href="post-filter-hct.html">Hct</a>
+      <a href="crrt-na.html">Sodium</a>
+      <a href="citrate.html">Citrate</a>
+      <a href="modalities.html">Modalities</a>
+    </nav>
+  </div>
+</header>
+
+<main class="sim-shell">
+  <a class="sim-back" href="../">← All tools</a>
+  <p class="sim-eyebrow">Hemoconcentration</p>
+  <h1 class="sim-title">Filtration Fraction</h1>
+  <p class="sim-lede">The percent of plasma water you pull across the filter. Above ~25%, your filter clots. Below 20%, it sings.</p>
+
+  <div class="sim-grid">
+
+    <!-- INPUTS -->
+    <aside class="panel">
+      <h2 class="panel-title">Inputs</h2>
+
+      <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Modality</div>
+        <div class="segmented" id="seg-mod">
+          <button class="active" data-value="CVVH">CVVH</button>
+          <button data-value="CVVHDF">CVVHDF</button>
+          <button data-value="CVVHD">CVVHD</button>
+          <button data-value="SCUF">SCUF</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Blood flow (Qb)</span>
+          <span class="field-value"><span id="v-bfr">180</span><span class="field-unit">mL/min</span></span>
+        </div>
+        <input id="i-bfr" type="range" min="50" max="400" step="10" value="180" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Hematocrit</span>
+          <span class="field-value"><span id="v-hct">30</span><span class="field-unit">%</span></span>
+        </div>
+        <input id="i-hct" type="range" min="15" max="60" step="1" value="30" />
+      </div>
+
+      <div class="field" data-show="rep">
+        <div class="field-row">
+          <span class="field-label">Pre-dilution replacement</span>
+          <span class="field-value"><span id="v-pre">1000</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-pre" type="range" min="0" max="4000" step="100" value="1000" />
+      </div>
+
+      <div class="field" data-show="rep">
+        <div class="field-row">
+          <span class="field-label">Post-dilution replacement</span>
+          <span class="field-value"><span id="v-post">1000</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-post" type="range" min="0" max="4000" step="100" value="1000" />
+      </div>
+
+      <div class="field" data-show="dial">
+        <div class="field-row">
+          <span class="field-label">Dialysate</span>
+          <span class="field-value"><span id="v-dial">0</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-dial" type="range" min="0" max="4000" step="100" value="0" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Net UF removal</span>
+          <span class="field-value"><span id="v-net">100</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-net" type="range" min="0" max="500" step="10" value="100" />
+      </div>
+    </aside>
+
+    <!-- RESULT -->
+    <section class="result">
+      <p class="result-label">Filtration Fraction</p>
+      <p class="result-big" id="r-ff">—<span class="result-unit">%</span></p>
+      <p class="result-caption" id="r-msg">Drag a slider to see how your filter responds.</p>
+      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Safe</span>
+
+      <div class="meter" aria-hidden="true">
+        <div class="meter-marker" id="r-marker" style="left:0%"></div>
+      </div>
+      <div class="meter-scale"><span>0%</span><span>20%</span><span>25%</span><span>40%</span></div>
+
+      <div class="result-stats">
+        <div>
+          <p class="stat-label">Post-filter Hct</p>
+          <p class="stat-value"><span id="r-hctout">—</span><span class="stat-unit">%</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Plasma flow</p>
+          <p class="stat-value"><span id="r-qp">—</span><span class="stat-unit">mL/min</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Effluent dose</p>
+          <p class="stat-value"><span id="r-dose">—</span><span class="stat-unit">mL/kg/h*</span></p>
+        </div>
+        <div>
+          <p class="stat-label">Total effluent</p>
+          <p class="stat-value"><span id="r-eff">—</span><span class="stat-unit">mL/h</span></p>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:14px 0 0;">*Assumes 70 kg — adjust mentally for your patient.</p>
+    </section>
+
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="explainer">
+    <details open>
+      <summary>How this works</summary>
+      <div class="explainer-body">
+        <p><strong>The principle.</strong> As plasma is pulled across the membrane, the blood that continues down the filter becomes progressively more concentrated. Past a certain point, red cells and proteins pack so tightly that the filter clots — fast.</p>
+        <p><strong>The formula.</strong></p>
+        <p><span class="formula">FF = (Q<sub>pre</sub> + Q<sub>post</sub> + Q<sub>net</sub>) / (Q<sub>plasma</sub> + Q<sub>pre</sub>)</span></p>
+        <p>Where Q<sub>plasma</sub> = Q<sub>b</sub> × (1 − Hct). Dialysate flow doesn't appear — it's diffusive, not convective.</p>
+        <p><strong>The thresholds.</strong> Most adult protocols target FF below 20%; 20–25% is a caution zone; above 25% filter survival drops sharply. Pre-dilution is the most powerful lever — it raises the denominator without touching dose.</p>
+        <p><strong>Levers in order of impact.</strong> Pre-dilution ▸ blood flow ▸ post-dilution ▸ net UF. If FF is high, add pre-dilution before you lower the dose.</p>
+      </div>
+    </details>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p>NephSim · for educational use only · not a substitute for clinical judgment</p>
+  </div>
+</footer>
+
+<script src="../assets/js/shared.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const inputs = ['bfr','hct','pre','post','dial','net'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+
+  let modality = 'CVVH';
+
+  function applyVisibility() {
+    document.querySelectorAll('[data-show="rep"]').forEach(el => {
+      el.style.display = (modality === 'CVVH' || modality === 'CVVHDF') ? '' : 'none';
+    });
+    document.querySelectorAll('[data-show="dial"]').forEach(el => {
+      el.style.display = (modality === 'CVVHD' || modality === 'CVVHDF') ? '' : 'none';
+    });
+  }
+
+  NephSim.bindSegmented($('seg-mod'), (val) => {
+    modality = val;
+    // sensible defaults per modality
+    if (val === 'CVVH')   { $('i-pre').value = 1000; $('i-post').value = 1000; $('i-dial').value = 0; }
+    if (val === 'CVVHDF') { $('i-pre').value = 1000; $('i-post').value = 500;  $('i-dial').value = 1000; }
+    if (val === 'CVVHD')  { $('i-pre').value = 0;    $('i-post').value = 0;    $('i-dial').value = 2000; }
+    if (val === 'SCUF')   { $('i-pre').value = 0;    $('i-post').value = 0;    $('i-dial').value = 0; }
+    inputs.forEach(i => NephSim.bindRangeFill(i.el));
+    applyVisibility();
+    compute();
+  });
+
+  function compute() {
+    const BFR  = parseFloat($('i-bfr').value);     // mL/min
+    const Hct  = parseFloat($('i-hct').value)/100; // fraction
+    const Qpre = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-pre').value)/60 : 0;   // mL/min
+    const Qpost = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-post').value)/60 : 0; // mL/min
+    const Qdial = (modality === 'CVVHD' || modality === 'CVVHDF') ? parseFloat($('i-dial').value)/60 : 0; // mL/min
+    const Qnet  = parseFloat($('i-net').value)/60; // mL/min
+
+    // update labels
+    inputs.forEach(i => i.v.textContent = $('i-'+i.k).value);
+
+    const Qp = BFR * (1 - Hct);                      // plasma flow into filter
+    const Qconv = Qpre + Qpost + Qnet;               // convective filtration
+    const FF = (Qp + Qpre) > 0 ? (Qconv / (Qp + Qpre)) * 100 : NaN;
+
+    // post-filter Hct = (BFR × Hct) / (BFR − Qpost − Qnet)
+    // pre-dilution increases volume entering filter but exits as filtrate, so net blood-side outflow loses Qpost + Qnet
+    const denomHct = BFR - Qpost - Qnet;
+    const HctOut = denomHct > 0 ? (BFR * Hct) / denomHct * 100 : NaN;
+
+    const totalEffluent = (Qpre + Qpost + Qdial + Qnet) * 60; // mL/h
+    const dose = totalEffluent / 70; // assume 70 kg
+
+    // render
+    $('r-ff').innerHTML = NephSim.fmt.one(FF) + '<span class="result-unit">%</span>';
+    $('r-qp').textContent = NephSim.fmt.int(Qp);
+    $('r-hctout').textContent = NephSim.fmt.one(HctOut);
+    $('r-eff').textContent = NephSim.fmt.int(totalEffluent);
+    $('r-dose').textContent = NephSim.fmt.one(dose);
+
+    // color + chip + message
+    const r = $('r-ff');
+    r.classList.remove('is-good','is-warn','is-bad');
+    const chip = $('r-chip');
+    chip.classList.remove('chip-good','chip-warn','chip-bad');
+
+    let msg, chipText;
+    if (!Number.isFinite(FF)) { msg = '—'; chipText = '—'; chip.classList.add('chip-good'); }
+    else if (FF < 20) {
+      r.classList.add('is-good'); chip.classList.add('chip-good');
+      msg = 'Comfortable filter conditions. Hemoconcentration is low.';
+      chipText = 'Safe';
+    } else if (FF < 25) {
+      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      msg = 'Borderline. Consider adding pre-dilution or raising blood flow.';
+      chipText = 'Caution';
+    } else {
+      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      msg = 'High clotting risk. Add pre-dilution, increase Qb, or reduce dose.';
+      chipText = 'High risk';
+    }
+    chip.innerHTML = '<span class="chip-dot"></span> ' + chipText;
+    $('r-msg').textContent = msg;
+
+    // meter — clamp 0–40% to position
+    const pct = Math.max(0, Math.min(40, FF)) / 40 * 100;
+    $('r-marker').style.left = pct + '%';
+  }
+
+  inputs.forEach(i => i.el.addEventListener('input', compute));
+  applyVisibility();
+  compute();
+})();
+</script>
+</body>
+</html>

@@ -6,9 +6,22 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 <title>CRRT Sodium · NephSim</title>
-<meta name="description" content="Custom-Na CRRT simulator. Predict serum sodium trajectory and stay within safe correction limits." />
+<meta name="description" content="Yessayan-style CRRT sodium kinetic simulator. Evidence-based correction limits, true sodium dialysance with the pre-dilution penalty." />
 <link rel="stylesheet" href="../assets/css/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+<style>
+  .src { font-size: 11.5px; color: var(--text-muted); letter-spacing: -0.005em; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 28px; }
+  .preset-btn {
+    background: var(--bg-input); border: 1px solid var(--line-soft);
+    color: var(--text-soft); padding: 7px 14px; border-radius: var(--radius-pill);
+    font-size: 13px; cursor: pointer; transition: all var(--dur) var(--ease);
+    letter-spacing: -0.005em;
+  }
+  .preset-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; letter-spacing: -0.005em; }
+  .tbw-readout { font-size: 12px; color: var(--text-muted); margin-top: 6px; letter-spacing: -0.005em; }
+</style>
 </head>
 <body>
 
@@ -27,9 +40,27 @@
 
 <main class="sim-shell">
   <a class="sim-back" href="../">← All tools</a>
-  <p class="sim-eyebrow">Dysnatremia</p>
+  <p class="sim-eyebrow">Dysnatremia · Yessayan kinetic model</p>
   <h1 class="sim-title">CRRT Sodium</h1>
-  <p class="sim-lede">Build a custom dialysate Na and watch the 24-hour trajectory. Stay inside the safe-correction band — or see exactly when you'll leave it.</p>
+  <p class="sim-lede">Single-pool sodium kinetics with true dialysance — including the pre-dilution penalty most calculators miss. Predict the 24-hour trajectory, or solve for the bag composition you'd need to prescribe.</p>
+
+  <!-- Quick presets -->
+  <div class="presets" id="presets">
+    <button class="preset-btn" data-preset="yessayan">Yessayan 2021 case</button>
+    <button class="preset-btn" data-preset="severe-hypo">Severe symptomatic Na 105</button>
+    <button class="preset-btn" data-preset="hyper">Hypernatremia Na 165</button>
+    <button class="preset-btn" data-preset="cvvhd">Plain CVVHD baseline</button>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="field" style="max-width:520px;margin-bottom:32px;">
+    <div class="field-label" style="margin-bottom:8px;">Mode</div>
+    <div class="segmented" id="seg-mode">
+      <button class="active" data-value="sim">Simulate</button>
+      <button data-value="solve">Solve for fluid Na</button>
+    </div>
+    <p id="mode-hint" class="src" style="margin:10px 0 0;">Drag your fluid Na — see how serum Na approaches it.</p>
+  </div>
 
   <div class="sim-grid">
 
@@ -37,62 +68,113 @@
       <h2 class="panel-title">Inputs</h2>
 
       <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Modality</div>
+        <div class="segmented" id="seg-mod">
+          <button data-value="CVVHD">CVVHD</button>
+          <button class="active" data-value="CVVHDF">CVVHDF</button>
+          <button data-value="CVVH">CVVH</button>
+        </div>
+      </div>
+
+      <div class="field">
         <div class="field-row">
           <span class="field-label">Starting serum Na</span>
-          <span class="field-value"><span id="v-na0">115</span><span class="field-unit">mEq/L</span></span>
+          <span class="field-value"><span id="v-na0">116</span><span class="field-unit">mEq/L</span></span>
         </div>
-        <input id="i-na0" type="range" min="100" max="180" step="1" value="115" />
+        <input id="i-na0" type="range" min="100" max="180" step="1" value="116" />
+      </div>
+
+      <div class="field" id="row-naf">
+        <div class="field-row">
+          <span class="field-label">Fluid sodium</span>
+          <span class="field-value"><span id="v-naf">130</span><span class="field-unit">mEq/L</span></span>
+        </div>
+        <input id="i-naf" type="range" min="100" max="160" step="1" value="130" />
+        <p class="src" style="margin:8px 0 0;">Use [Na+K] of dialysate / RF bag. Standard Prismasate-4K is 140+4 = 144 mEq/L.</p>
+      </div>
+
+      <div class="field" id="row-target" style="display:none;">
+        <div class="field-row">
+          <span class="field-label">Target ΔNa in 24 h</span>
+          <span class="field-value"><span id="v-tgt">+6</span><span class="field-unit">mEq/L</span></span>
+        </div>
+        <input id="i-tgt" type="range" min="-12" max="12" step="1" value="6" />
       </div>
 
       <div class="field">
         <div class="field-row">
-          <span class="field-label">Dialysate / replacement Na</span>
-          <span class="field-value"><span id="v-naf">125</span><span class="field-unit">mEq/L</span></span>
+          <span class="field-label">Blood flow (Qb)</span>
+          <span class="field-value"><span id="v-bfr">200</span><span class="field-unit">mL/min</span></span>
         </div>
-        <input id="i-naf" type="range" min="100" max="160" step="1" value="125" />
+        <input id="i-bfr" type="range" min="80" max="300" step="10" value="200" />
+      </div>
+
+      <div class="field" data-show="pre">
+        <div class="field-row">
+          <span class="field-label">Pre-dilution RF</span>
+          <span class="field-value"><span id="v-pre">1200</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-pre" type="range" min="0" max="3500" step="100" value="1200" />
+      </div>
+
+      <div class="field" data-show="post">
+        <div class="field-row">
+          <span class="field-label">Post-dilution RF</span>
+          <span class="field-value"><span id="v-post">800</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-post" type="range" min="0" max="3500" step="100" value="800" />
+      </div>
+
+      <div class="field" data-show="dial">
+        <div class="field-row">
+          <span class="field-label">Dialysate</span>
+          <span class="field-value"><span id="v-dial">1500</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-dial" type="range" min="0" max="3500" step="100" value="1500" />
       </div>
 
       <div class="field">
         <div class="field-row">
-          <span class="field-label">Total effluent</span>
-          <span class="field-value"><span id="v-eff">2500</span><span class="field-unit">mL/h</span></span>
+          <span class="field-label">Net UF</span>
+          <span class="field-value"><span id="v-net">50</span><span class="field-unit">mL/h</span></span>
         </div>
-        <input id="i-eff" type="range" min="1000" max="5000" step="100" value="2500" />
+        <input id="i-net" type="range" min="0" max="400" step="10" value="50" />
       </div>
 
       <div class="field">
         <div class="field-row">
           <span class="field-label">Weight</span>
-          <span class="field-value"><span id="v-wt">70</span><span class="field-unit">kg</span></span>
+          <span class="field-value"><span id="v-wt">80</span><span class="field-unit">kg</span></span>
         </div>
-        <input id="i-wt" type="range" min="40" max="180" step="1" value="70" />
+        <input id="i-wt" type="range" min="40" max="180" step="1" value="80" />
+        <p class="tbw-readout">TBW estimate · <span id="tbw-l">48</span> L</p>
       </div>
 
       <div class="field">
-        <div class="field-label" style="margin-bottom:8px;">Total body water</div>
+        <div class="field-label" style="margin-bottom:8px;">Body water fraction</div>
         <div class="segmented" id="seg-tbw">
-          <button class="active" data-value="0.6">Male (0.6)</button>
-          <button data-value="0.5">Female (0.5)</button>
-          <button data-value="0.55">Elderly (0.55)</button>
+          <button class="active" data-value="0.6">Male · 0.6</button>
+          <button data-value="0.5">Female · 0.5</button>
+          <button data-value="0.55">Elderly · 0.55</button>
         </div>
+        <p class="src" style="margin:8px 0 0;">Rule of thumb. For Watson-formula precision, use measured TBW in the weight slider.</p>
       </div>
 
       <div class="field">
-        <div class="field-row">
-          <span class="field-label">Pattern of dysnatremia</span>
-        </div>
+        <div class="field-label" style="margin-bottom:8px;">Correction limit</div>
         <div class="segmented" id="seg-acute">
-          <button class="active" data-value="chronic">Chronic / unknown</button>
-          <button data-value="acute">Acute (&lt;48h)</button>
+          <button data-value="6">High ODS risk · 6/24h</button>
+          <button class="active" data-value="8">Standard · 8/24h</button>
+          <button data-value="10">Acute symptomatic · 10/24h</button>
         </div>
-        <p style="font-size:12.5px;color:var(--text-muted);margin:10px 0 0;line-height:1.4;">Chronic hyponatremia: limit ΔNa to 8 mEq/L per 24h. Acute: up to 10–12 mEq/L tolerated.</p>
+        <p class="src" style="margin:8px 0 0;">High ODS risk: cirrhosis, hypokalemia, malnutrition, alcohol use, K &lt; 3. Sterns NEJM 2015; Verbalis 2013.</p>
       </div>
     </aside>
 
     <section class="result">
-      <p class="result-label">Predicted Na at 24 h</p>
+      <p class="result-label" id="r-label">Predicted Na at 24 h</p>
       <p class="result-big" id="r-na24">—<span class="result-unit">mEq/L</span></p>
-      <p class="result-caption" id="r-msg">Adjust the dialysate Na and watch how serum Na approaches it over time.</p>
+      <p class="result-caption" id="r-msg">Adjust the fluid Na and watch how serum Na approaches it.</p>
       <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Within limits</span>
 
       <div class="result-stats">
@@ -105,8 +187,14 @@
           <p class="stat-value"><span id="r-tlim">—</span><span class="stat-unit">h</span></p>
         </div>
         <div>
+          <p class="stat-label">Sodium dialysance</p>
+          <p class="stat-value"><span id="r-dna">—</span><span class="stat-unit">mL/min</span></p>
+          <p class="stat-sub" id="r-pen-sub">— pre-dilution penalty</p>
+        </div>
+        <div>
           <p class="stat-label">Time constant τ</p>
           <p class="stat-value"><span id="r-tau">—</span><span class="stat-unit">h</span></p>
+          <p class="stat-sub">63% equilibrated at 1τ</p>
         </div>
       </div>
     </section>
@@ -116,21 +204,44 @@
   <!-- Trajectory chart -->
   <div class="chart-wrap">
     <p class="panel-title" style="margin:0 0 18px;">24-hour Na trajectory</p>
-    <svg id="chart" viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="font-family:-apple-system,sans-serif;">
-      <!-- axes drawn dynamically -->
-    </svg>
+    <svg id="chart" viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="font-family:-apple-system,sans-serif;"></svg>
+    <p class="src" style="margin:14px 0 0;line-height:1.5;">Green band = safe correction window (Na<sub>0</sub> ± your selected limit). Red dashed line marks the hour you'd exceed it. Curve is the Yessayan single-pool exponential with true sodium dialysance.</p>
   </div>
 
   <div class="explainer">
     <details open>
       <summary>How this works</summary>
       <div class="explainer-body">
-        <p>Sodium in CRRT follows simple first-order kinetics. The clearance for Na ≈ the total effluent rate (sieving coefficient ≈ 1).</p>
-        <p>Serum Na approaches the dialysate Na exponentially:</p>
-        <p><span class="formula">Na(t) = Na<sub>fluid</sub> + (Na<sub>0</sub> − Na<sub>fluid</sub>) × e<sup>−t/τ</sup></span></p>
-        <p>where the time constant <span class="formula">τ = TBW / Q<sub>eff</sub></span> (use compatible units — L and L/h).</p>
-        <p><strong>Why this matters.</strong> With chronic hyponatremia, the goal is &lt;8 mEq/L correction in 24 h. Standard dialysate (Na 140) corrects far too fast on a patient at Na 115. A custom dialysate of 125 closes the gap slowly — and you can step it up day by day.</p>
-        <p><strong>The trick.</strong> The asymptote is the fluid Na itself. Pick a fluid Na that, even if left running indefinitely, won't overshoot your 24-hour goal. The simulator shades the safe band.</p>
+        <p><strong>The model.</strong> Sodium follows single-pool first-order kinetics:</p>
+        <p><span class="formula">[Na]<sub>t</sub> = Na<sub>f</sub> + ([Na]<sub>0</sub> − Na<sub>f</sub>) · e<sup>−D<sub>Na</sub> · t / TBW</sup></span></p>
+        <p>Na<sub>f</sub> is the fluid [Na+K] (the asymptote serum Na approaches). D<sub>Na</sub> is sodium dialysance.</p>
+        <p><strong>Why D<sub>Na</sub> isn't just Q<sub>effluent</sub>.</strong> Pre-filter replacement fluid dilutes the blood entering the filter, so the effluent carries Na at a lower concentration than the patient's serum. The Yessayan group's correction is:</p>
+        <p><span class="formula">D<sub>Na</sub> = Q<sub>B</sub> × (Q<sub>preRF</sub> + Q<sub>postRF</sub> + Q<sub>D</sub> + Q<sub>UF</sub>) / (Q<sub>B</sub> + Q<sub>preRF</sub>)</span></p>
+        <p>The penalty factor Q<sub>B</sub> / (Q<sub>B</sub> + Q<sub>preRF</sub>) is invisible at the bedside but can reduce real Na clearance by 10–20%. In CVVHD with no pre-RF it disappears.</p>
+        <p><strong>The Yessayan playbook.</strong> A standard 140-Na dialysate corrects a patient at Na 115 catastrophically fast (Δ &gt; 15 mEq/L in 24 h). Customize a low-Na bag — e.g. add 333 mL sterile water to a 5 L bag of Prismasate to reach ~135 mEq/L — so the asymptote sits just above target. Even an unmonitored 24 h run can't overshoot.</p>
+        <p><strong>Correction limits — pick by risk, not by clock.</strong></p>
+        <table class="tbl" style="margin-top:8px;">
+          <thead><tr><th>Tier</th><th>24 h cap</th><th>When to use</th></tr></thead>
+          <tbody>
+            <tr><td>High ODS risk</td><td>6 mEq/L</td><td>Cirrhosis, K &lt; 3, malnutrition, alcohol use, Na &lt; 105</td></tr>
+            <tr><td>Standard chronic</td><td>8 mEq/L</td><td>Chronic / unknown duration, no extra risk factors</td></tr>
+            <tr><td>Acute symptomatic</td><td>10–12 mEq/L</td><td>Documented &lt; 48 h: post-op, MDMA, marathon, polydipsia</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Caveats the simulator doesn't model.</strong> Free water from D5W IVF, urine output (often hypotonic in recovering AKI — silently raises serum Na), tube feeds, citrate-Na load (ACD-A is 224 mEq/L). Re-measure Na at 6 and 12 h and re-run.</p>
+      </div>
+    </details>
+
+    <details style="margin-top:16px;">
+      <summary>Evidence base</summary>
+      <div class="explainer-body">
+        <p><strong>Kinetic model:</strong> Yessayan L, Yee J, Frinak S, Szamosfalvi B. Management of dysnatremias with continuous renal replacement therapy. <em>Semin Dial.</em> 2021;34(6):472–479. PMID 34169573.</p>
+        <p><strong>Mixing-paradigm extension:</strong> Chiaramonte R, Yee J, Frinak S, Yessayan L. Safely correct hyponatremia with continuous renal replacement therapy: a flexible, all-purpose method based on the mixing paradigm. <em>Physiol Rep.</em> 2023;11(1):e15496. PMID 36602098.</p>
+        <p><strong>Original protocol:</strong> Yessayan L et al. CRRT for the management of acid-base and electrolyte imbalances in AKI. <em>Adv Chronic Kidney Dis.</em> 2016;23(3):203–210. PMID 27113697.</p>
+        <p><strong>Severe Na correction limits:</strong> Sterns RH. Disorders of plasma sodium — causes, consequences, and correction. <em>NEJM.</em> 2015;372:55–65.</p>
+        <p><strong>Hyponatremia guidelines:</strong> Verbalis JG et al. Diagnosis, evaluation, and treatment of hyponatremia: expert panel recommendations. <em>Am J Med.</em> 2013;126(10 Suppl 1):S1–S42.</p>
+        <p><strong>European guideline:</strong> Spasovski G et al. Clinical practice guideline on diagnosis and treatment of hyponatraemia. <em>Eur J Endocrinol.</em> 2014;170:G1–G47.</p>
+        <p><strong>Edelman relation ([Na+K]/TBW):</strong> Nguyen MK, Kurtz I. Quantitative interrelationship between Gibbs-Donnan equilibrium, osmolality of body fluid compartments, and plasma water sodium concentration. <em>J Appl Physiol.</em> 2004;97:1858–1862.</p>
       </div>
     </details>
   </div>
@@ -144,69 +255,204 @@
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
-  const inputs = ['na0','naf','eff','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+  const inputs = ['na0','naf','tgt','bfr','pre','post','dial','net','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
   let tbwFrac = 0.6;
-  let pattern = 'chronic';
+  let limitVal = 8;
+  let modality = 'CVVHDF';
+  let mode = 'sim';
+
+  function applyVisibility() {
+    document.querySelectorAll('[data-show="pre"]').forEach(el => {
+      el.style.display = (modality === 'CVVH' || modality === 'CVVHDF') ? '' : 'none';
+    });
+    document.querySelectorAll('[data-show="post"]').forEach(el => {
+      el.style.display = (modality === 'CVVH' || modality === 'CVVHDF') ? '' : 'none';
+    });
+    document.querySelectorAll('[data-show="dial"]').forEach(el => {
+      el.style.display = (modality === 'CVVHD' || modality === 'CVVHDF') ? '' : 'none';
+    });
+    $('row-naf').style.display = mode === 'sim' ? '' : 'none';
+    $('row-target').style.display = mode === 'solve' ? '' : 'none';
+    $('r-label').textContent = mode === 'sim' ? 'Predicted Na at 24 h' : 'Required fluid Na';
+    $('mode-hint').textContent = mode === 'sim'
+      ? 'Drag your fluid Na — see how serum Na approaches it.'
+      : 'Pick a target ΔNa — see what [Na+K] you\'d need to prescribe.';
+  }
 
   NephSim.bindSegmented($('seg-tbw'), (val) => { tbwFrac = parseFloat(val); compute(); });
-  NephSim.bindSegmented($('seg-acute'), (val) => { pattern = val; compute(); });
+  NephSim.bindSegmented($('seg-acute'), (val) => { limitVal = parseFloat(val); compute(); });
+  NephSim.bindSegmented($('seg-mod'), (val) => {
+    modality = val;
+    if (val === 'CVVHD')  { $('i-pre').value = 0;    $('i-post').value = 0;    $('i-dial').value = 2000; }
+    if (val === 'CVVHDF') { $('i-pre').value = 1200; $('i-post').value = 800;  $('i-dial').value = 1500; }
+    if (val === 'CVVH')   { $('i-pre').value = 1200; $('i-post').value = 1000; $('i-dial').value = 0; }
+    inputs.forEach(i => NephSim.bindRangeFill(i.el));
+    applyVisibility();
+    compute();
+  });
+  NephSim.bindSegmented($('seg-mode'), (val) => { mode = val; applyVisibility(); compute(); });
+
+  // Presets
+  const presets = {
+    yessayan: { // Yessayan 2021 / Chiaramonte 2023 worked case
+      mod: 'CVVH', na0: 116, naf: 135, bfr: 200, pre: 1200, post: 0, dial: 0, net: 42,
+      wt: 80, tbwFrac: 0.6, limit: 8, mode: 'sim'
+    },
+    'severe-hypo': {
+      mod: 'CVVHDF', na0: 105, naf: 122, bfr: 180, pre: 1000, post: 500, dial: 1500, net: 50,
+      wt: 70, tbwFrac: 0.6, limit: 6, mode: 'sim'
+    },
+    hyper: {
+      mod: 'CVVHDF', na0: 165, naf: 140, bfr: 180, pre: 1000, post: 500, dial: 1500, net: 100,
+      wt: 75, tbwFrac: 0.55, limit: 10, mode: 'sim'
+    },
+    cvvhd: {
+      mod: 'CVVHD', na0: 130, naf: 140, bfr: 200, pre: 0, post: 0, dial: 2500, net: 100,
+      wt: 80, tbwFrac: 0.6, limit: 8, mode: 'sim'
+    }
+  };
+  $('presets').addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset-btn');
+    if (!btn) return;
+    const p = presets[btn.dataset.preset];
+    if (!p) return;
+    modality = p.mod;
+    mode = p.mode;
+    tbwFrac = p.tbwFrac;
+    limitVal = p.limit;
+    $('i-na0').value = p.na0;
+    $('i-naf').value = p.naf;
+    $('i-bfr').value = p.bfr;
+    $('i-pre').value = p.pre;
+    $('i-post').value = p.post;
+    $('i-dial').value = p.dial;
+    $('i-net').value = p.net;
+    $('i-wt').value = p.wt;
+    // sync segmented UI
+    syncSegmented('seg-mod', p.mod);
+    syncSegmented('seg-mode', p.mode);
+    syncSegmented('seg-tbw', String(p.tbwFrac));
+    syncSegmented('seg-acute', String(p.limit));
+    inputs.forEach(i => NephSim.bindRangeFill(i.el));
+    applyVisibility();
+    compute();
+  });
+  function syncSegmented(id, value) {
+    const buttons = $(id).querySelectorAll('button');
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.value === value));
+  }
 
   function compute() {
-    inputs.forEach(i => i.v.textContent = i.el.value);
-    const Na0 = parseFloat($('i-na0').value);
-    const Naf = parseFloat($('i-naf').value);
-    const Qeff_mLh = parseFloat($('i-eff').value);
-    const Wt = parseFloat($('i-wt').value);
+    inputs.forEach(i => {
+      if (i.k === 'tgt') {
+        const v = parseFloat(i.el.value);
+        i.v.textContent = (v >= 0 ? '+' : '') + v;
+      } else {
+        i.v.textContent = i.el.value;
+      }
+    });
+
+    const Na0   = parseFloat($('i-na0').value);
+    const BFR   = parseFloat($('i-bfr').value);
+    const BFRh  = BFR * 60;
+    const Qpre  = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-pre').value)  : 0;
+    const Qpost = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-post').value) : 0;
+    const Qd    = (modality === 'CVVHD' || modality === 'CVVHDF') ? parseFloat($('i-dial').value) : 0;
+    const Qnet  = parseFloat($('i-net').value);
+    const Wt    = parseFloat($('i-wt').value);
     const TBW_L = Wt * tbwFrac;
-    const Qeff_Lh = Qeff_mLh / 1000;
-    const tau = TBW_L / Qeff_Lh; // hours
+    $('tbw-l').textContent = TBW_L.toFixed(1);
 
-    // Predicted Na(t)
-    const Na = (t) => Naf + (Na0 - Naf) * Math.exp(-t / tau);
-    const Na24 = Na(24);
-    const delta24 = Na24 - Na0;
+    const convDiff = Qpre + Qpost + Qd + Qnet;
+    const Dna_mLh  = (BFRh + Qpre) > 0 ? (BFRh * convDiff) / (BFRh + Qpre) : 0;
+    const Dna_Lh   = Dna_mLh / 1000;
+    const Dna_mLmin = Dna_mLh / 60;
 
-    // Determine the user's safe correction limit
-    const isHypo = Na0 < 135;
-    const limit = pattern === 'chronic' ? 8 : 10; // mEq/L per 24h
-    const dir = Naf > Na0 ? 1 : (Naf < Na0 ? -1 : 0);
-    // signed delta in direction of correction
-    const absDelta24 = Math.abs(delta24);
+    const penalty = convDiff > 0 ? (1 - Dna_mLh / convDiff) * 100 : 0;
+    const tau = Dna_Lh > 0 ? TBW_L / Dna_Lh : Infinity;
 
-    // Time at which |ΔNa| reaches limit
-    // |Na(t) - Na0| = |Naf - Na0| × (1 - e^(-t/τ)) = limit
-    // → t = -τ × ln(1 - limit/|Naf-Na0|)
+    let Naf, Na24, delta24, msg, txt, requiredNaf = null;
+    const limit = limitVal;
+
+    if (mode === 'sim') {
+      Naf = parseFloat($('i-naf').value);
+      Na24 = Naf + (Na0 - Naf) * Math.exp(-24 / tau);
+      delta24 = Na24 - Na0;
+    } else {
+      const deltaTarget = parseFloat($('i-tgt').value);
+      const Na24t = Na0 + deltaTarget;
+      const fade = Math.exp(-24 / tau);
+      requiredNaf = (1 - fade) > 1e-6 ? (Na24t - Na0 * fade) / (1 - fade) : NaN;
+      Naf = requiredNaf;
+      Na24 = Na24t;
+      delta24 = deltaTarget;
+    }
+
     const gap = Math.abs(Naf - Na0);
     let tLimit = NaN;
-    if (gap > 0 && limit < gap) tLimit = -tau * Math.log(1 - limit / gap);
+    if (gap > 0 && limit < gap && Number.isFinite(tau)) {
+      tLimit = -tau * Math.log(1 - limit / gap);
+    }
 
-    $('r-na24').innerHTML = NephSim.fmt.one(Na24) + '<span class="result-unit">mEq/L</span>';
+    const rBig = $('r-na24');
+    if (mode === 'sim') {
+      rBig.innerHTML = NephSim.fmt.one(Na24) + '<span class="result-unit">mEq/L</span>';
+    } else {
+      rBig.innerHTML = (Number.isFinite(requiredNaf) ? NephSim.fmt.one(requiredNaf) : '—')
+        + '<span class="result-unit">mEq/L</span>';
+    }
+
     $('r-delta').textContent = (delta24 >= 0 ? '+' : '') + NephSim.fmt.one(delta24);
-    $('r-tlim').textContent = Number.isFinite(tLimit) ? NephSim.fmt.one(tLimit) : '> 24';
-    $('r-tau').textContent = NephSim.fmt.one(tau);
+    $('r-tlim').textContent = Number.isFinite(tLimit) ? NephSim.fmt.one(tLimit) : (Number.isFinite(tau) ? '> 24' : '—');
+    $('r-tau').textContent  = Number.isFinite(tau) ? NephSim.fmt.one(tau) : '∞';
+    $('r-dna').textContent  = NephSim.fmt.int(Dna_mLmin);
+    $('r-pen-sub').textContent = penalty > 0.05
+      ? `${NephSim.fmt.one(penalty)}% pre-dilution penalty`
+      : 'no pre-dilution penalty';
 
-    const r = $('r-na24');
+    const r = rBig;
     const chip = $('r-chip');
     r.classList.remove('is-good','is-warn','is-bad');
     chip.classList.remove('chip-good','chip-warn','chip-bad');
-    let msg, txt;
-    if (absDelta24 <= limit) {
-      r.classList.add('is-good'); chip.classList.add('chip-good');
-      msg = `Stays within the ${limit} mEq/L / 24 h limit.`;
-      txt = 'Within limits';
-    } else if (absDelta24 <= limit + 4) {
-      r.classList.add('is-warn'); chip.classList.add('chip-warn');
-      msg = `Will exceed the ${limit} mEq/L limit at ${NephSim.fmt.one(tLimit)} h. Narrow the gap.`;
-      txt = 'Borderline';
+    const absDelta = Math.abs(delta24);
+
+    if (mode === 'solve') {
+      if (!Number.isFinite(requiredNaf)) {
+        chip.classList.add('chip-warn');
+        msg = 'Set a non-zero target ΔNa.'; txt = 'Enter target';
+      } else if (requiredNaf < 90 || requiredNaf > 160) {
+        r.classList.add('is-bad'); chip.classList.add('chip-bad');
+        msg = 'Required fluid Na is outside the feasible range — stretch the time horizon or rethink modality.';
+        txt = 'Out of range';
+      } else if (absDelta <= limit) {
+        r.classList.add('is-good'); chip.classList.add('chip-good');
+        msg = `Prescribe bags at [Na+K] ≈ ${NephSim.fmt.int(requiredNaf)} mEq/L. Stays inside the ${limit}-mEq/L 24-h cap.`;
+        txt = 'Within limits';
+      } else {
+        r.classList.add('is-warn'); chip.classList.add('chip-warn');
+        msg = `Target ΔNa exceeds the ${limit}-mEq/L cap — drop your target or extend the horizon.`;
+        txt = 'Target too aggressive';
+      }
     } else {
-      r.classList.add('is-bad'); chip.classList.add('chip-bad');
-      msg = `Overcorrection risk. ΔNa hits ${limit} mEq/L at ${NephSim.fmt.one(tLimit)} h — bring dialysate Na closer to serum Na.`;
-      txt = 'Overcorrects';
+      if (absDelta <= limit) {
+        r.classList.add('is-good'); chip.classList.add('chip-good');
+        msg = `Stays within the ${limit}-mEq/L 24-h cap.`;
+        txt = 'Within limits';
+      } else if (absDelta <= limit + 4) {
+        r.classList.add('is-warn'); chip.classList.add('chip-warn');
+        msg = `Exceeds the ${limit}-mEq/L cap at ${NephSim.fmt.one(tLimit)} h. Bring fluid Na closer to serum Na.`;
+        txt = 'Borderline';
+      } else {
+        r.classList.add('is-bad'); chip.classList.add('chip-bad');
+        msg = `Overcorrection risk — ΔNa hits the cap at ${NephSim.fmt.one(tLimit)} h.`;
+        txt = 'Overcorrects';
+      }
     }
     chip.innerHTML = '<span class="chip-dot"></span> ' + txt;
     $('r-msg').textContent = msg;
 
-    drawChart(Na, Na0, limit, tLimit);
+    const NaFn = (t) => Naf + (Na0 - Naf) * Math.exp(-t / tau);
+    drawChart(NaFn, Na0, limit, tLimit);
   }
 
   function drawChart(NaFn, Na0, limit, tLimit) {
@@ -214,32 +460,27 @@
     const W = 700, H = 260;
     const pad = { l: 56, r: 18, t: 18, b: 36 };
 
-    // Y range — auto fit
     const samples = [];
     for (let t = 0; t <= 24; t += 0.25) samples.push(NaFn(t));
     let yMin = Math.min(...samples, Na0) - 2;
     let yMax = Math.max(...samples, Na0) + 2;
-    // round to 1
     yMin = Math.floor(yMin); yMax = Math.ceil(yMax);
     if (yMax - yMin < 6) { const m = (yMin+yMax)/2; yMin = m - 3; yMax = m + 3; }
 
     const x = (t) => pad.l + (t/24) * (W - pad.l - pad.r);
     const y = (v) => pad.t + (1 - (v - yMin)/(yMax - yMin)) * (H - pad.t - pad.b);
 
-    // Build path
     let d = '';
     samples.forEach((v, i) => {
       const t = i * 0.25;
       d += (i === 0 ? 'M' : 'L') + x(t).toFixed(1) + ',' + y(v).toFixed(1) + ' ';
     });
 
-    // Safe band (Na0 ± limit) — only show the relevant side
     const safeHi = Na0 + limit;
     const safeLo = Na0 - limit;
     const bandTop = y(Math.min(yMax, safeHi));
     const bandBot = y(Math.max(yMin, safeLo));
 
-    // Gridlines (Y) — every step of round
     const stepY = (yMax - yMin) <= 12 ? 2 : 5;
     let yGrid = '';
     for (let v = Math.ceil(yMin); v <= yMax; v++) {
@@ -248,14 +489,12 @@
         yGrid += `<text x="${pad.l-10}" y="${y(v)+4}" fill="var(--text-muted)" font-size="11" text-anchor="end">${v}</text>`;
       }
     }
-    // X axis ticks every 4h
     let xGrid = '';
     for (let t = 0; t <= 24; t += 4) {
       xGrid += `<line x1="${x(t)}" x2="${x(t)}" y1="${H-pad.b}" y2="${H-pad.b+4}" stroke="var(--text-muted)" stroke-width="1"/>`;
       xGrid += `<text x="${x(t)}" y="${H-pad.b+20}" fill="var(--text-muted)" font-size="11" text-anchor="middle">${t}h</text>`;
     }
 
-    // Limit-time vertical line
     let limitLine = '';
     if (Number.isFinite(tLimit) && tLimit <= 24) {
       limitLine = `<line x1="${x(tLimit)}" x2="${x(tLimit)}" y1="${pad.t}" y2="${H-pad.b}" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="3 4"/>
@@ -276,6 +515,7 @@
   }
 
   inputs.forEach(i => i.el.addEventListener('input', compute));
+  applyVisibility();
   compute();
 })();
 </script>

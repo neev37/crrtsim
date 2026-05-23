@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 <title>Filtration Fraction · NephSim</title>
-<meta name="description" content="Live CRRT filtration fraction simulator with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
+<meta name="description" content="Live CRRT filtration fraction simulator styled as a Prismax-style monitor, with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
 <link rel="stylesheet" href="../assets/css/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
 <style>
@@ -19,14 +19,11 @@
     letter-spacing: -0.005em;
   }
   .preset-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
-  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; letter-spacing: -0.005em; }
-  .rec-box {
-    margin-top: 24px; padding: 16px 18px;
-    background: var(--accent-soft); border-radius: 14px;
-    border: 1px solid transparent;
+  .mode-note {
+    font-size: 12px; color: var(--text-muted); letter-spacing: -0.005em;
+    margin: 6px 0 22px; line-height: 1.5;
   }
-  .rec-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin: 0 0 6px; font-weight: 600; }
-  .rec-text { font-size: 15px; color: var(--text); margin: 0; line-height: 1.45; }
+  .mode-note b { color: var(--text-soft); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -48,7 +45,7 @@
   <a class="sim-back" href="../">← All tools</a>
   <p class="sim-eyebrow">Hemoconcentration</p>
   <h1 class="sim-title">Filtration Fraction</h1>
-  <p class="sim-lede">The percent of plasma water pulled across the membrane. Below 20% your filter sings. Above 25% it clots. The sim also reports your <em>delivered</em> KDIGO dose and the single most impactful lever to pull right now.</p>
+  <p class="sim-lede">The percent of plasma water pulled across the membrane. Below 20% the filter sings. Above 25% it clots. The monitor below mirrors a Prismax/Vantive screen — pump-by-pump readouts plus the single lever to pull.</p>
 
   <!-- Quick presets -->
   <div class="presets" id="presets">
@@ -56,23 +53,15 @@
     <button class="preset-btn" data-preset="high-hct">High Hct · 45%</button>
     <button class="preset-btn" data-preset="post-only">Post-only mistake</button>
     <button class="preset-btn" data-preset="cvvhd">Plain CVVHD</button>
+    <button class="preset-btn" data-preset="scuf">SCUF</button>
   </div>
 
   <div class="sim-grid">
 
     <!-- INPUTS -->
     <aside class="panel">
-      <h2 class="panel-title">Inputs</h2>
-
-      <div class="field">
-        <div class="field-label" style="margin-bottom:8px;">Modality</div>
-        <div class="segmented" id="seg-mod">
-          <button class="active" data-value="CVVH">CVVH</button>
-          <button data-value="CVVHDF">CVVHDF</button>
-          <button data-value="CVVHD">CVVHD</button>
-          <button data-value="SCUF">SCUF</button>
-        </div>
-      </div>
+      <h2 class="panel-title">Pump settings · CVVHDF</h2>
+      <p class="mode-note">One universal mode. <b>Set pre + post = 0</b> to model <b>CVVHD</b>. <b>All flows = 0 except net UF</b> models <b>SCUF</b>.</p>
 
       <div class="field">
         <div class="field-row">
@@ -90,33 +79,33 @@
         <input id="i-hct" type="range" min="15" max="60" step="1" value="30" />
       </div>
 
-      <div class="field" data-show="rep">
+      <div class="field">
         <div class="field-row">
-          <span class="field-label">Pre-dilution replacement</span>
+          <span class="field-label">Pre-dilution (PBP)</span>
           <span class="field-value"><span id="v-pre">1000</span><span class="field-unit">mL/h</span></span>
         </div>
         <input id="i-pre" type="range" min="0" max="4000" step="100" value="1000" />
       </div>
 
-      <div class="field" data-show="rep">
+      <div class="field">
         <div class="field-row">
           <span class="field-label">Post-dilution replacement</span>
-          <span class="field-value"><span id="v-post">1000</span><span class="field-unit">mL/h</span></span>
+          <span class="field-value"><span id="v-post">500</span><span class="field-unit">mL/h</span></span>
         </div>
-        <input id="i-post" type="range" min="0" max="4000" step="100" value="1000" />
-      </div>
-
-      <div class="field" data-show="dial">
-        <div class="field-row">
-          <span class="field-label">Dialysate</span>
-          <span class="field-value"><span id="v-dial">0</span><span class="field-unit">mL/h</span></span>
-        </div>
-        <input id="i-dial" type="range" min="0" max="4000" step="100" value="0" />
+        <input id="i-post" type="range" min="0" max="4000" step="100" value="500" />
       </div>
 
       <div class="field">
         <div class="field-row">
-          <span class="field-label">Net UF removal</span>
+          <span class="field-label">Dialysate</span>
+          <span class="field-value"><span id="v-dial">1500</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-dial" type="range" min="0" max="4000" step="100" value="1500" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Net UF removal (PFR)</span>
           <span class="field-value"><span id="v-net">100</span><span class="field-unit">mL/h</span></span>
         </div>
         <input id="i-net" type="range" min="0" max="500" step="10" value="100" />
@@ -131,45 +120,65 @@
       </div>
     </aside>
 
-    <!-- RESULT -->
-    <section class="result">
-      <p class="result-label">Filtration Fraction</p>
-      <p class="result-big" id="r-ff">—<span class="result-unit">%</span></p>
-      <p class="result-caption" id="r-msg">Drag a slider to see how your filter responds.</p>
-      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Safe</span>
-
-      <div class="meter" aria-hidden="true">
-        <div class="meter-marker" id="r-marker" style="left:0%"></div>
-      </div>
-      <div class="meter-scale"><span>0%</span><span>20%</span><span>25%</span><span>40%</span></div>
-      <p class="src" style="margin:8px 0 0;text-align:center;">Targets per Joannidis &amp; Oudemans-van Straaten, Crit Care 2007</p>
-
-      <!-- Live recommendation -->
-      <div class="rec-box">
-        <p class="rec-label">Top lever to pull</p>
-        <p class="rec-text" id="rec-text">—</p>
+    <!-- RESULT — Prismax-style monitor -->
+    <section class="machine">
+      <div class="machine-top">
+        <span class="machine-brand">MONITOR · CRRT</span>
+        <span class="machine-status"><span class="dot"></span> LIVE</span>
+        <span class="machine-mode" id="m-mode">CVVHDF</span>
       </div>
 
-      <div class="result-stats">
-        <div>
-          <p class="stat-label">Post-filter Hct</p>
-          <p class="stat-value"><span id="r-hctout">—</span><span class="stat-unit">%</span></p>
+      <div class="machine-main">
+        <p class="machine-label">Filtration Fraction</p>
+        <p class="machine-big" id="r-ff">—<span class="machine-unit">%</span></p>
+        <div class="machine-statusrow">
+          <span id="r-chip" class="machine-chip m-chip-good"><span class="dot"></span> SAFE</span>
+          <span class="machine-msg" id="r-msg">Drag a slider to see how your filter responds.</span>
         </div>
-        <div>
-          <p class="stat-label">Delivered dose</p>
-          <p class="stat-value"><span id="r-dose">—</span><span class="stat-unit">mL/kg/h</span></p>
-          <p class="stat-sub">KDIGO target 20–25</p>
+      </div>
+
+      <div class="machine-meter">
+        <div class="machine-meter-bar" aria-hidden="true">
+          <span class="machine-meter-marker" id="r-marker" style="left:0%"></span>
         </div>
-        <div>
-          <p class="stat-label">Sodium dialysance</p>
-          <p class="stat-value"><span id="r-dna">—</span><span class="stat-unit">mL/min</span></p>
-          <p class="stat-sub" id="r-pen-sub">— pre-dilution penalty</p>
+        <div class="machine-meter-scale"><span>0%</span><span>20%</span><span>25%</span><span>40%</span></div>
+        <p class="machine-meter-cite">Targets per Joannidis &amp; Oudemans-van Straaten, <i>Crit Care</i> 2007</p>
+      </div>
+
+      <div class="machine-readouts">
+        <div class="readout pump-effluent">
+          <span class="readout-label">Post-filter Hct</span>
+          <span class="readout-value" id="r-hctout">—<span class="readout-unit-inline">%</span></span>
+          <span class="readout-sub" id="r-hct-sub">×1.0 vs inlet</span>
         </div>
-        <div>
-          <p class="stat-label">Plasma flow</p>
-          <p class="stat-value"><span id="r-qp">—</span><span class="stat-unit">mL/min</span></p>
-          <p class="stat-sub">Q<sub>b</sub> × (1 − Hct)</p>
+        <div class="readout pump-dial">
+          <span class="readout-label">Delivered dose</span>
+          <span class="readout-value" id="r-dose">—<span class="readout-unit-inline">mL/kg/h</span></span>
+          <span class="readout-sub">KDIGO target 20–25</span>
         </div>
+        <div class="readout pump-replace">
+          <span class="readout-label">Sodium dialysance</span>
+          <span class="readout-value" id="r-dna">—<span class="readout-unit-inline">mL/min</span></span>
+          <span class="readout-sub" id="r-pen-sub">— penalty</span>
+        </div>
+        <div class="readout pump-blood">
+          <span class="readout-label">Plasma flow</span>
+          <span class="readout-value" id="r-qp">—<span class="readout-unit-inline">mL/min</span></span>
+          <span class="readout-sub">Q<sub>b</sub> · (1 − Hct)</span>
+        </div>
+      </div>
+
+      <div class="machine-pumps">
+        <span class="pump pump-blood"><span class="dot"></span> Blood <b id="p-bfr">180</b></span>
+        <span class="pump pump-pbp"><span class="dot"></span> PBP <b id="p-pre">1000</b></span>
+        <span class="pump pump-replace"><span class="dot"></span> Repl <b id="p-post">500</b></span>
+        <span class="pump pump-dial"><span class="dot"></span> Dial <b id="p-dial">1500</b></span>
+        <span class="pump pump-pfr"><span class="dot"></span> PFR <b id="p-net">100</b></span>
+      </div>
+
+      <div class="machine-rec">
+        <p class="machine-rec-label">Top lever to pull</p>
+        <p class="machine-rec-text" id="rec-text">—</p>
       </div>
     </section>
 
@@ -192,6 +201,7 @@
         <p><span class="formula">FF = (Q<sub>pre</sub> + Q<sub>post</sub> + Q<sub>net</sub>) / (Q<sub>plasma</sub> + Q<sub>pre</sub>)</span></p>
         <p>With Q<sub>plasma</sub> = Q<sub>b</sub> × (1 − Hct). Dialysate doesn't appear in FF — it's diffusive, not convective. It still counts toward delivered dose.</p>
         <p><strong>Thresholds.</strong> Most adult protocols target FF below 20%; 20–25% is caution; above 25% filter survival falls sharply (Joannidis 2007, Tan 2002). KDIGO target effluent dose is 20–25 mL/kg/h delivered (RENAL, ATN trials).</p>
+        <p><strong>One universal mode.</strong> The simulator is set up as CVVHDF — the most general form. Set pre + post replacement to 0 and you have CVVHD; turn all flows except net UF to 0 and you have SCUF. That's how the Prismax thinks too: one pump set, four flows.</p>
         <p><strong>Levers, ranked by impact.</strong></p>
         <ol style="padding-left:22px;margin:8px 0 0;">
           <li><strong>Pre-dilution</strong> — raises the denominator without touching dose. Doubles filter life (van der Voort 2005, Tan 2002).</li>
@@ -229,41 +239,20 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const inputs = ['bfr','hct','pre','post','dial','net','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
-  let modality = 'CVVH';
 
-  function applyVisibility() {
-    document.querySelectorAll('[data-show="rep"]').forEach(el => {
-      el.style.display = (modality === 'CVVH' || modality === 'CVVHDF') ? '' : 'none';
-    });
-    document.querySelectorAll('[data-show="dial"]').forEach(el => {
-      el.style.display = (modality === 'CVVHD' || modality === 'CVVHDF') ? '' : 'none';
-    });
-  }
-
-  NephSim.bindSegmented($('seg-mod'), (val) => {
-    modality = val;
-    if (val === 'CVVH')   { $('i-pre').value = 1000; $('i-post').value = 1000; $('i-dial').value = 0; }
-    if (val === 'CVVHDF') { $('i-pre').value = 1000; $('i-post').value = 500;  $('i-dial').value = 1000; }
-    if (val === 'CVVHD')  { $('i-pre').value = 0;    $('i-post').value = 0;    $('i-dial').value = 2000; }
-    if (val === 'SCUF')   { $('i-pre').value = 0;    $('i-post').value = 0;    $('i-dial').value = 0; }
-    inputs.forEach(i => NephSim.bindRangeFill(i.el));
-    applyVisibility();
-    compute();
-  });
-
-  // Presets
+  // Presets — pure flow settings, no modality token.
   const presets = {
-    brcu:       { mod: 'CVVHDF', bfr: 200, hct: 30, pre: 1000, post: 1000, dial: 1000, net: 100, wt: 80 },
-    'high-hct': { mod: 'CVVH',   bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
-    'post-only':{ mod: 'CVVH',   bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
-    cvvhd:      { mod: 'CVVHD',  bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 }
+    brcu:       { bfr: 200, hct: 30, pre: 1000, post: 1000, dial: 1000, net: 100, wt: 80 },
+    'high-hct': { bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
+    'post-only':{ bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
+    cvvhd:      { bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 },
+    scuf:       { bfr: 150, hct: 32, pre: 0,    post: 0,    dial: 0,    net: 200, wt: 80 }
   };
   $('presets').addEventListener('click', (e) => {
     const btn = e.target.closest('.preset-btn');
     if (!btn) return;
     const p = presets[btn.dataset.preset];
     if (!p) return;
-    modality = p.mod;
     $('i-bfr').value = p.bfr;
     $('i-hct').value = p.hct;
     $('i-pre').value = p.pre;
@@ -271,27 +260,38 @@
     $('i-dial').value = p.dial;
     $('i-net').value = p.net;
     $('i-wt').value = p.wt;
-    const btns = $('seg-mod').querySelectorAll('button');
-    btns.forEach(b => b.classList.toggle('active', b.dataset.value === p.mod));
     inputs.forEach(i => NephSim.bindRangeFill(i.el));
-    applyVisibility();
     compute();
   });
+
+  function detectMode(pre, post, dial, net) {
+    if (pre === 0 && post === 0 && dial === 0) return net > 0 ? 'SCUF' : 'IDLE';
+    if (pre === 0 && post === 0) return 'CVVHD';
+    if (dial === 0)              return 'CVVH';
+    return 'CVVHDF';
+  }
 
   function compute() {
     const BFR  = parseFloat($('i-bfr').value);
     const Hct  = parseFloat($('i-hct').value)/100;
-    const Qpre_mLh  = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-pre').value)  : 0;
-    const Qpost_mLh = (modality === 'CVVH' || modality === 'CVVHDF') ? parseFloat($('i-post').value) : 0;
-    const Qdial_mLh = (modality === 'CVVHD' || modality === 'CVVHDF') ? parseFloat($('i-dial').value) : 0;
+    const Qpre_mLh  = parseFloat($('i-pre').value);
+    const Qpost_mLh = parseFloat($('i-post').value);
+    const Qdial_mLh = parseFloat($('i-dial').value);
     const Qnet_mLh  = parseFloat($('i-net').value);
     const Wt        = parseFloat($('i-wt').value);
 
     inputs.forEach(i => i.v.textContent = $('i-'+i.k).value);
 
+    // Pump status row mirrors slider values
+    $('p-bfr').textContent  = BFR;
+    $('p-pre').textContent  = Qpre_mLh;
+    $('p-post').textContent = Qpost_mLh;
+    $('p-dial').textContent = Qdial_mLh;
+    $('p-net').textContent  = Qnet_mLh;
+    $('m-mode').textContent = detectMode(Qpre_mLh, Qpost_mLh, Qdial_mLh, Qnet_mLh);
+
     const Qpre  = Qpre_mLh / 60;
     const Qpost = Qpost_mLh / 60;
-    const Qdial = Qdial_mLh / 60;
     const Qnet  = Qnet_mLh / 60;
 
     const Qp = BFR * (1 - Hct);
@@ -300,6 +300,7 @@
 
     const denomHct = BFR - Qpost - Qnet;
     const HctOut = denomHct > 0 ? (BFR * Hct) / denomHct * 100 : NaN;
+    const hctRise = Number.isFinite(HctOut) ? (HctOut / (Hct * 100)) : NaN;
 
     const totalEffluent = Qpre_mLh + Qpost_mLh + Qdial_mLh + Qnet_mLh;
     const dose = totalEffluent / Wt;
@@ -310,74 +311,89 @@
     const Dna_mLmin = Dna_mLh / 60;
     const penalty = convDiff_mLh > 0 ? (1 - Dna_mLh / convDiff_mLh) * 100 : 0;
 
-    $('r-ff').innerHTML = NephSim.fmt.one(FF) + '<span class="result-unit">%</span>';
-    $('r-qp').textContent = NephSim.fmt.int(Qp);
-    $('r-hctout').textContent = NephSim.fmt.one(HctOut);
-    $('r-dose').textContent = NephSim.fmt.one(dose);
-    $('r-dna').textContent = Number.isFinite(Dna_mLmin) ? NephSim.fmt.int(Dna_mLmin) : '—';
+    $('r-ff').innerHTML = NephSim.fmt.one(FF) + '<span class="machine-unit">%</span>';
+    $('r-qp').innerHTML = NephSim.fmt.int(Qp) + '<span class="readout-unit-inline">mL/min</span>';
+    $('r-hctout').innerHTML = NephSim.fmt.one(HctOut) + '<span class="readout-unit-inline">%</span>';
+    $('r-dose').innerHTML   = NephSim.fmt.one(dose) + '<span class="readout-unit-inline">mL/kg/h</span>';
+    $('r-dna').innerHTML    = (Number.isFinite(Dna_mLmin) ? NephSim.fmt.int(Dna_mLmin) : '—') + '<span class="readout-unit-inline">mL/min</span>';
     $('r-pen-sub').textContent = penalty > 0.05
       ? `${NephSim.fmt.one(penalty)}% pre-dilution penalty`
       : 'no pre-dilution penalty';
+    $('r-hct-sub').textContent = Number.isFinite(hctRise)
+      ? `×${hctRise.toFixed(2)} vs inlet`
+      : '—';
 
     const r = $('r-ff');
     r.classList.remove('is-good','is-warn','is-bad');
     const chip = $('r-chip');
-    chip.classList.remove('chip-good','chip-warn','chip-bad');
+    chip.classList.remove('m-chip-good','m-chip-warn','m-chip-bad');
 
     let msg, chipText;
-    if (!Number.isFinite(FF)) { msg = '—'; chipText = '—'; chip.classList.add('chip-good'); }
+    if (!Number.isFinite(FF)) { msg = '—'; chipText = '—'; chip.classList.add('m-chip-good'); }
     else if (FF < 20) {
-      r.classList.add('is-good'); chip.classList.add('chip-good');
+      r.classList.add('is-good'); chip.classList.add('m-chip-good');
       msg = 'Comfortable filter conditions. Hemoconcentration is low.';
       chipText = 'Safe';
     } else if (FF < 25) {
-      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      r.classList.add('is-warn'); chip.classList.add('m-chip-warn');
       msg = 'Borderline. Consider pre-dilution or higher Qb before clotting.';
       chipText = 'Caution';
     } else {
-      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      r.classList.add('is-bad'); chip.classList.add('m-chip-bad');
       msg = 'High clotting risk. Act now — see lever recommendation.';
       chipText = 'High risk';
     }
-    chip.innerHTML = '<span class="chip-dot"></span> ' + chipText;
+    chip.innerHTML = '<span class="dot"></span> ' + chipText;
     $('r-msg').textContent = msg;
 
-    // KDIGO-graded dose coloring
+    // KDIGO-graded dose coloring on the readout
     const doseNum = $('r-dose');
-    doseNum.style.color = '';
+    doseNum.classList.remove('is-good','is-warn','is-bad');
     if (Number.isFinite(dose)) {
-      if (dose < 18)      doseNum.style.color = 'var(--bad)';
-      else if (dose < 20) doseNum.style.color = 'var(--warn)';
-      else if (dose <= 25)doseNum.style.color = 'var(--good)';
-      else                doseNum.style.color = 'var(--warn)';
+      if (dose < 18)       doseNum.classList.add('is-bad');
+      else if (dose < 20)  doseNum.classList.add('is-warn');
+      else if (dose <= 25) doseNum.classList.add('is-good');
+      else                 doseNum.classList.add('is-warn');
+    }
+
+    // Post-filter Hct coloring
+    const hctNum = $('r-hctout');
+    hctNum.classList.remove('is-good','is-warn','is-bad');
+    if (Number.isFinite(HctOut)) {
+      if (HctOut < 40)      hctNum.classList.add('is-good');
+      else if (HctOut < 50) hctNum.classList.add('is-warn');
+      else                  hctNum.classList.add('is-bad');
     }
 
     const pct = Math.max(0, Math.min(40, FF)) / 40 * 100;
     $('r-marker').style.left = pct + '%';
 
-    setRecommendation(FF, dose, Hct, BFR, Qpre_mLh, Qpost_mLh, Qdial_mLh, modality);
+    setRecommendation(FF, dose, Hct, BFR, Qpre_mLh, Qpost_mLh, Qdial_mLh, Qnet_mLh);
     drawFilter(Hct, HctOut, FF);
   }
 
-  function setRecommendation(FF, dose, Hct, BFR, Qpre, Qpost, Qdial, mod) {
+  function setRecommendation(FF, dose, Hct, BFR, Qpre, Qpost, Qdial, Qnet) {
     const rec = $('rec-text');
     if (!Number.isFinite(FF)) { rec.textContent = '—'; return; }
 
+    const idle = (Qpre + Qpost + Qdial + Qnet) === 0;
+    if (idle) { rec.innerHTML = `<strong>No therapy delivered.</strong> Pumps are idle — set at least one flow.`; return; }
+
     if (FF >= 25) {
-      if ((mod === 'CVVH' || mod === 'CVVHDF') && Qpre < 2000) {
-        rec.innerHTML = `<strong>Add pre-dilution.</strong> Raise Q<sub>pre</sub> toward ${Math.min(2500, Qpre + 1000)} mL/h — best evidence-based first lever (van der Voort 2005).`;
+      if (Qpre < 2000) {
+        rec.innerHTML = `<strong>Add pre-dilution.</strong> Raise PBP toward ${Math.min(2500, Qpre + 1000)} mL/h — best evidence-based first lever (van der Voort 2005).`;
       } else if (BFR < 250) {
         rec.innerHTML = `<strong>Raise blood flow.</strong> ${BFR} → ${BFR + 30} mL/min drops FF immediately if access tolerates.`;
-      } else if (mod === 'CVVHD') {
-        rec.innerHTML = `<strong>Switch to CVVHDF.</strong> Pure CVVHD with high net UF runs hot — pre-dilution RF is the simplest fix.`;
+      } else if (Qpre === 0 && Qpost === 0 && Qdial > 0) {
+        rec.innerHTML = `<strong>Switch to CVVHDF.</strong> Pure CVVHD with high net UF runs hot — add ~1000 mL/h pre-dilution.`;
       } else {
-        rec.innerHTML = `<strong>Reduce dose.</strong> Pre-dilution and BFR are maxed — drop Q<sub>post</sub> or dialysate to keep the filter alive.`;
+        rec.innerHTML = `<strong>Reduce post / net UF.</strong> Pre-dilution and BFR are maxed — drop convective load to keep the filter alive.`;
       }
     } else if (FF >= 20) {
-      if ((mod === 'CVVH' || mod === 'CVVHDF') && Qpost > 0 && Qpre < 2000) {
+      if (Qpost > 0 && Qpre < 2000) {
         rec.innerHTML = `<strong>Shift post → pre.</strong> Move 500 mL/h from post-dilution to pre-dilution — same dose, lower FF.`;
       } else {
-        rec.innerHTML = `<strong>You're in the caution zone.</strong> FF will creep up as Hct rises (transfusions, fluid removal). Watch the post-filter Hct stat.`;
+        rec.innerHTML = `<strong>Caution zone.</strong> FF will creep up as Hct rises (transfusions, net UF). Watch the post-filter Hct readout.`;
       }
     } else {
       if (dose < 20) {
@@ -420,7 +436,7 @@
       <rect x="620" y="${yMid - 10}" width="60" height="20" fill="var(--line)" rx="3"/>
       <rect x="${x0}" y="${yMid - halfH - 8}" width="${x1-x0}" height="${(halfH*2) + 16}" rx="14"
             fill="var(--bg-input)" stroke="var(--line-soft)" stroke-width="1"/>
-      ${[-18,-9,0,9,18].map(off => `<line x1="${x0+6}" x2="${x1-6}" y1="${yMid+off}" y2="${yMid+off}" stroke="rgba(0,113,227,0.15)" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
+      ${[-18,-9,0,9,18].map(off => `<line x1="${x0+6}" x2="${x1-6}" y1="${yMid+off}" y2="${yMid+off}" stroke="rgba(0,102,255,0.15)" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
       <rect x="${x0+4}" y="${yMid - halfH}" width="${x1-x0-8}" height="${halfH*2}" fill="url(#bloodGrad)" opacity="0.55" rx="6"/>
       <path d="M ${(x0+x1)/2 - 6} ${yMid + halfH + 6} L ${(x0+x1)/2 + 6} ${yMid + halfH + 6} L ${(x0+x1)/2} ${yMid + halfH + 22} Z"
             fill="var(--accent)" opacity="0.85"/>
@@ -439,7 +455,6 @@
   }
 
   inputs.forEach(i => i.el.addEventListener('input', compute));
-  applyVisibility();
   compute();
 })();
 </script>

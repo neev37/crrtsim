@@ -6,9 +6,23 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 <title>Post-filter Hematocrit · NephSim</title>
-<meta name="description" content="Predict the hematocrit leaving your CRRT filter — and the clot risk that comes with it." />
+<meta name="description" content="Predict the hematocrit leaving your CRRT filter — and the clot risk that comes with it. Prismax-style live monitor." />
 <link rel="stylesheet" href="../assets/css/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
+<style>
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 32px; }
+  .preset-btn {
+    background: var(--bg-input); border: 1px solid var(--line-soft);
+    color: var(--text-soft); padding: 7px 14px; border-radius: var(--radius-pill);
+    font-size: 13px; cursor: pointer; transition: all var(--dur) var(--ease);
+    letter-spacing: -0.005em;
+  }
+  .preset-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+  .mode-note {
+    font-size: 12px; color: var(--text-muted); letter-spacing: -0.005em;
+    margin: 6px 0 22px; line-height: 1.5;
+  }
+</style>
 </head>
 <body>
 
@@ -29,19 +43,27 @@
   <a class="sim-back" href="../">← All tools</a>
   <p class="sim-eyebrow">Filter life</p>
   <h1 class="sim-title">Post-filter Hematocrit</h1>
-  <p class="sim-lede">Plasma leaves. Red cells stay. The blood that exits your filter is always more concentrated than the blood that entered.</p>
+  <p class="sim-lede">Plasma leaves. Red cells stay. The blood that exits your filter is always more concentrated than the blood that entered. The monitor below mirrors a Prismax/Vantive screen.</p>
+
+  <div class="presets" id="presets">
+    <button class="preset-btn" data-preset="typical">Typical CVVHDF</button>
+    <button class="preset-btn" data-preset="high-hct">High Hct · 45%</button>
+    <button class="preset-btn" data-preset="post-heavy">Post-heavy mistake</button>
+    <button class="preset-btn" data-preset="cvvhd">Plain CVVHD</button>
+  </div>
 
   <div class="sim-grid">
 
     <aside class="panel">
-      <h2 class="panel-title">Inputs</h2>
+      <h2 class="panel-title">Pump settings · CVVHDF</h2>
+      <p class="mode-note">One universal mode. Dialysate doesn't affect post-filter Hct (it's diffusive) — but it does count toward dose.</p>
 
       <div class="field">
         <div class="field-row">
           <span class="field-label">Pre-filter Hct</span>
-          <span class="field-value"><span id="v-hct">28</span><span class="field-unit">%</span></span>
+          <span class="field-value"><span id="v-hct">30</span><span class="field-unit">%</span></span>
         </div>
-        <input id="i-hct" type="range" min="15" max="55" step="1" value="28" />
+        <input id="i-hct" type="range" min="15" max="55" step="1" value="30" />
       </div>
 
       <div class="field">
@@ -54,7 +76,7 @@
 
       <div class="field">
         <div class="field-row">
-          <span class="field-label">Pre-dilution</span>
+          <span class="field-label">Pre-dilution (PBP)</span>
           <span class="field-value"><span id="v-pre">1000</span><span class="field-unit">mL/h</span></span>
         </div>
         <input id="i-pre" type="range" min="0" max="4000" step="100" value="1000" />
@@ -62,68 +84,104 @@
 
       <div class="field">
         <div class="field-row">
-          <span class="field-label">Post-dilution + Net UF</span>
-          <span class="field-value"><span id="v-post">1500</span><span class="field-unit">mL/h</span></span>
+          <span class="field-label">Post-dilution</span>
+          <span class="field-value"><span id="v-post">500</span><span class="field-unit">mL/h</span></span>
         </div>
-        <input id="i-post" type="range" min="0" max="4500" step="100" value="1500" />
+        <input id="i-post" type="range" min="0" max="4000" step="100" value="500" />
+      </div>
+
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Net UF (PFR)</span>
+          <span class="field-value"><span id="v-net">100</span><span class="field-unit">mL/h</span></span>
+        </div>
+        <input id="i-net" type="range" min="0" max="500" step="10" value="100" />
       </div>
     </aside>
 
-    <section class="result">
-      <p class="result-label">Post-filter Hct</p>
-      <p class="result-big" id="r-hct">—<span class="result-unit">%</span></p>
-      <p class="result-caption" id="r-msg">Adjust the inputs to see the Hct rise across your filter.</p>
-      <span id="r-chip" class="chip chip-good"><span class="chip-dot"></span> Safe</span>
+    <section class="machine">
+      <div class="machine-top">
+        <span class="machine-brand">MONITOR · POST-FILTER HCT</span>
+        <span class="machine-status"><span class="dot"></span> LIVE</span>
+        <span class="machine-mode" id="m-mode">CVVHDF</span>
+      </div>
 
-      <!-- Filter visualization -->
-      <div style="margin-top:30px;">
-        <svg id="filter-svg" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+      <div class="machine-main">
+        <p class="machine-label">Post-filter Hct</p>
+        <p class="machine-big" id="r-hct">—<span class="machine-unit">%</span></p>
+        <div class="machine-statusrow">
+          <span id="r-chip" class="machine-chip m-chip-good"><span class="dot"></span> SAFE</span>
+          <span class="machine-msg" id="r-msg">Adjust pumps to see the Hct rise across your filter.</span>
+        </div>
+      </div>
+
+      <div class="machine-meter">
+        <div class="machine-meter-bar" aria-hidden="true">
+          <span class="machine-meter-marker" id="r-marker" style="left:0%"></span>
+        </div>
+        <div class="machine-meter-scale"><span>15%</span><span>40%</span><span>50%</span><span>70%</span></div>
+        <p class="machine-meter-cite">Targets &lt;40% safe · 40–50% caution · &gt;50% high clot risk</p>
+      </div>
+
+      <!-- Filter visualization, dark-mode native -->
+      <div style="padding: 18px 22px 4px;">
+        <svg id="filter-svg" viewBox="0 0 400 110" xmlns="http://www.w3.org/2000/svg" style="display:block;">
           <defs>
             <linearGradient id="bloodGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%"  stop-color="#c0334e" id="grad-in"/>
+              <stop offset="0%"   stop-color="#c0334e" id="grad-in"/>
               <stop offset="100%" stop-color="#7a1828" id="grad-out"/>
             </linearGradient>
-            <linearGradient id="filterStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.8"/>
-            </linearGradient>
           </defs>
-          <!-- inlet -->
-          <rect x="0" y="46" width="60" height="28" rx="10" fill="#c0334e"/>
-          <!-- filter body -->
-          <rect x="60" y="34" width="280" height="52" rx="14" fill="url(#bloodGrad)" stroke="url(#filterStroke)" stroke-width="2"/>
-          <!-- fiber lines -->
-          <g stroke="rgba(255,255,255,0.08)" stroke-width="1">
-            <line x1="60" y1="42" x2="340" y2="42"/>
-            <line x1="60" y1="50" x2="340" y2="50"/>
-            <line x1="60" y1="58" x2="340" y2="58"/>
-            <line x1="60" y1="66" x2="340" y2="66"/>
-            <line x1="60" y1="74" x2="340" y2="74"/>
-            <line x1="60" y1="82" x2="340" y2="82"/>
+          <rect x="0" y="42" width="60" height="26" rx="9" fill="#c0334e" id="inlet"/>
+          <rect x="60" y="30" width="280" height="50" rx="12" fill="url(#bloodGrad)" stroke="rgba(90,200,250,0.35)" stroke-width="1.5"/>
+          <g stroke="rgba(255,255,255,0.10)" stroke-width="1">
+            <line x1="60" y1="38" x2="340" y2="38"/>
+            <line x1="60" y1="46" x2="340" y2="46"/>
+            <line x1="60" y1="54" x2="340" y2="54"/>
+            <line x1="60" y1="62" x2="340" y2="62"/>
+            <line x1="60" y1="70" x2="340" y2="70"/>
           </g>
-          <!-- outlet -->
-          <rect x="340" y="46" width="60" height="28" rx="10" fill="#7a1828" id="outlet"/>
-          <!-- labels -->
-          <text x="30" y="22" fill="var(--text-muted)" font-size="10" font-family="-apple-system,sans-serif" text-anchor="middle">PRE</text>
-          <text x="30" y="108" fill="var(--text-soft)" font-size="11" font-family="-apple-system,sans-serif" text-anchor="middle" id="lbl-in">—%</text>
-          <text x="370" y="22" fill="var(--text-muted)" font-size="10" font-family="-apple-system,sans-serif" text-anchor="middle">POST</text>
-          <text x="370" y="108" fill="var(--text-soft)" font-size="11" font-family="-apple-system,sans-serif" text-anchor="middle" id="lbl-out">—%</text>
+          <rect x="340" y="42" width="60" height="26" rx="9" fill="#7a1828" id="outlet"/>
+          <text x="30" y="20"  fill="#7a8597" font-size="9.5" font-family="ui-monospace,SF Mono,Menlo,monospace" text-anchor="middle" letter-spacing="1">INLET</text>
+          <text x="30" y="100" fill="#b8c3d2" font-size="11" font-family="ui-monospace,SF Mono,Menlo,monospace" text-anchor="middle" id="lbl-in">—%</text>
+          <text x="370" y="20" fill="#7a8597" font-size="9.5" font-family="ui-monospace,SF Mono,Menlo,monospace" text-anchor="middle" letter-spacing="1">OUTLET</text>
+          <text x="370" y="100" fill="#b8c3d2" font-size="11" font-family="ui-monospace,SF Mono,Menlo,monospace" text-anchor="middle" id="lbl-out">—%</text>
         </svg>
       </div>
 
-      <div class="result-stats">
-        <div>
-          <p class="stat-label">Hct rise</p>
-          <p class="stat-value"><span id="r-rise">—</span><span class="stat-unit">×</span></p>
+      <div class="machine-readouts">
+        <div class="readout pump-pbp">
+          <span class="readout-label">Filter inlet Hct</span>
+          <span class="readout-value" id="r-in">—<span class="readout-unit-inline">%</span></span>
+          <span class="readout-sub">after pre-dilution mixing</span>
         </div>
-        <div>
-          <p class="stat-label">Filter inlet Hct</p>
-          <p class="stat-value"><span id="r-in">—</span><span class="stat-unit">%</span></p>
+        <div class="readout pump-effluent">
+          <span class="readout-label">Hct rise</span>
+          <span class="readout-value" id="r-rise">—<span class="readout-unit-inline">×</span></span>
+          <span class="readout-sub">post ÷ pre-filter</span>
         </div>
-        <div>
-          <p class="stat-label">Pre-dilution effect</p>
-          <p class="stat-value"><span id="r-dilute">—</span><span class="stat-unit">%</span></p>
+        <div class="readout pump-pfr">
+          <span class="readout-label">Pre-dilution drop</span>
+          <span class="readout-value" id="r-dilute">—<span class="readout-unit-inline">pts</span></span>
+          <span class="readout-sub">Hct lowered before filter</span>
         </div>
+        <div class="readout pump-blood">
+          <span class="readout-label">Plasma flow</span>
+          <span class="readout-value" id="r-qp">—<span class="readout-unit-inline">mL/min</span></span>
+          <span class="readout-sub">Q<sub>b</sub> · (1 − Hct)</span>
+        </div>
+      </div>
+
+      <div class="machine-pumps">
+        <span class="pump pump-blood"><span class="dot"></span> Blood <b id="p-bfr">180</b></span>
+        <span class="pump pump-pbp"><span class="dot"></span> PBP <b id="p-pre">1000</b></span>
+        <span class="pump pump-replace"><span class="dot"></span> Repl <b id="p-post">500</b></span>
+        <span class="pump pump-pfr"><span class="dot"></span> PFR <b id="p-net">100</b></span>
+      </div>
+
+      <div class="machine-rec">
+        <p class="machine-rec-label">Top lever to pull</p>
+        <p class="machine-rec-text" id="rec-text">—</p>
       </div>
     </section>
 
@@ -138,6 +196,16 @@
         <p>Pre-dilution dilutes the blood <em>before</em> the filter, lowering the effective Hct entering the membrane and giving you headroom:</p>
         <p><span class="formula">Hct<sub>inlet</sub> = Q<sub>b</sub> × Hct<sub>pre</sub> / (Q<sub>b</sub> + Q<sub>pre</sub>)</span></p>
         <p><strong>Targets.</strong> Keep post-filter Hct below ~40% if you can; 40–50% is workable but filter life shortens; above 50% expect frequent clotting. The single most powerful lever is pre-dilution.</p>
+        <p><strong>Why dialysate isn't here.</strong> Diffusive solute movement doesn't shift water across the membrane in net, so dialysate flow doesn't change post-filter Hct directly — but it still drives delivered dose. See the FF tool for the full picture.</p>
+      </div>
+    </details>
+
+    <details style="margin-top:16px;">
+      <summary>Evidence base</summary>
+      <div class="explainer-body">
+        <p><strong>Filter life vs hemoconcentration:</strong> Joannidis M, Oudemans-van Straaten HM. Clinical review: patency of the circuit in continuous renal replacement therapy. <em>Crit Care.</em> 2007;11:218.</p>
+        <p><strong>Pre-dilution doubles filter life:</strong> van der Voort PHJ et al. <em>Int J Artif Organs.</em> 2005;28(4):371–377.</p>
+        <p><strong>Hct as a clotting predictor:</strong> Tan HK et al. Factors related to the haemodynamic and biochemical effects of CVVH. <em>Crit Care Med.</em> 2002;30:1518–1523.</p>
       </div>
     </details>
   </div>
@@ -151,67 +219,125 @@
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
-  const inputs = ['hct','bfr','pre','post'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+  const inputs = ['hct','bfr','pre','post','net'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
+
+  const presets = {
+    typical:    { hct: 30, bfr: 180, pre: 1000, post: 500,  net: 100 },
+    'high-hct': { hct: 45, bfr: 180, pre: 500,  post: 1500, net: 100 },
+    'post-heavy':{hct: 32, bfr: 150, pre: 0,    post: 2200, net: 150 },
+    cvvhd:      { hct: 30, bfr: 200, pre: 0,    post: 0,    net: 100 }
+  };
+  $('presets').addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset-btn');
+    if (!btn) return;
+    const p = presets[btn.dataset.preset];
+    if (!p) return;
+    Object.keys(p).forEach(k => { $('i-'+k).value = p[k]; });
+    inputs.forEach(i => NephSim.bindRangeFill(i.el));
+    compute();
+  });
+
+  function detectMode(pre, post, net) {
+    if (pre === 0 && post === 0) return net > 0 ? 'SCUF / CVVHD' : 'IDLE';
+    if (post === 0) return 'CVVH (pre-only)';
+    if (pre === 0)  return 'CVVH (post-only)';
+    return 'CVVHDF';
+  }
 
   function compute() {
     inputs.forEach(i => i.v.textContent = i.el.value);
-    const Hct  = parseFloat($('i-hct').value);     // %
-    const BFR  = parseFloat($('i-bfr').value);     // mL/min
-    const Qpre = parseFloat($('i-pre').value)/60;  // mL/min
-    const Qpost = parseFloat($('i-post').value)/60;// mL/min (post + net UF combined)
+    const Hct   = parseFloat($('i-hct').value);      // %
+    const BFR   = parseFloat($('i-bfr').value);      // mL/min
+    const Qpre_mLh  = parseFloat($('i-pre').value);
+    const Qpost_mLh = parseFloat($('i-post').value);
+    const Qnet_mLh  = parseFloat($('i-net').value);
 
-    // Effective Hct entering filter membrane (after pre-dilution mixing)
-    const HctIn = (BFR * Hct) / (BFR + Qpre);
-    // Hct exiting filter (blood-side outflow)
-    const denom = BFR - Qpost;
+    $('p-bfr').textContent  = BFR;
+    $('p-pre').textContent  = Qpre_mLh;
+    $('p-post').textContent = Qpost_mLh;
+    $('p-net').textContent  = Qnet_mLh;
+    $('m-mode').textContent = detectMode(Qpre_mLh, Qpost_mLh, Qnet_mLh);
+
+    const Qpre  = Qpre_mLh  / 60;
+    const Qpost = Qpost_mLh / 60;
+    const Qnet  = Qnet_mLh  / 60;
+
+    const HctIn  = (BFR * Hct) / (BFR + Qpre);
+    const denom  = BFR - Qpost - Qnet;
     const HctOut = denom > 0 ? (BFR * Hct) / denom : NaN;
-    const rise = HctOut / Hct;
-    const dilutionEffect = Hct - HctIn; // how much pre-dilution helps
+    const rise   = Number.isFinite(HctOut) ? (HctOut / Hct) : NaN;
+    const dilutionEffect = Hct - HctIn;
+    const Qp     = BFR * (1 - Hct/100);
 
-    $('r-hct').innerHTML = NephSim.fmt.one(HctOut) + '<span class="result-unit">%</span>';
-    $('r-in').textContent = NephSim.fmt.one(HctIn);
-    $('r-rise').textContent = Number.isFinite(rise) ? rise.toFixed(2) : '—';
-    $('r-dilute').textContent = NephSim.fmt.one(dilutionEffect);
+    $('r-hct').innerHTML  = NephSim.fmt.one(HctOut) + '<span class="machine-unit">%</span>';
+    $('r-in').innerHTML   = NephSim.fmt.one(HctIn)  + '<span class="readout-unit-inline">%</span>';
+    $('r-rise').innerHTML = (Number.isFinite(rise) ? rise.toFixed(2) : '—') + '<span class="readout-unit-inline">×</span>';
+    $('r-dilute').innerHTML = NephSim.fmt.one(dilutionEffect) + '<span class="readout-unit-inline">pts</span>';
+    $('r-qp').innerHTML   = NephSim.fmt.int(Qp) + '<span class="readout-unit-inline">mL/min</span>';
 
-    $('lbl-in').textContent = NephSim.fmt.one(HctIn) + '%';
+    $('lbl-in').textContent  = NephSim.fmt.one(HctIn)  + '%';
     $('lbl-out').textContent = NephSim.fmt.one(HctOut) + '%';
 
-    // Visualize: darker red gradient with rising Hct
+    // Filter SVG color shift — darker red as Hct rises
     const c = (h) => {
-      // map Hct 15–60% to lightness in HSL
-      const clamp = Math.max(15, Math.min(60, h));
-      const l = 50 - (clamp - 15) * 0.6; // 50 → 23
-      return `hsl(350, 60%, ${l}%)`;
+      const clamp = Math.max(15, Math.min(70, h));
+      const l = 50 - (clamp - 15) * 0.55; // 50 → ~20
+      return `hsl(350, 62%, ${l}%)`;
     };
-    document.getElementById('grad-in').setAttribute('stop-color', c(HctIn));
-    document.getElementById('grad-out').setAttribute('stop-color', c(HctOut));
-    document.querySelector('rect[x="0"]').setAttribute('fill', c(HctIn));
-    document.getElementById('outlet').setAttribute('fill', c(HctOut));
+    $('grad-in').setAttribute('stop-color', c(HctIn));
+    $('grad-out').setAttribute('stop-color', c(HctOut));
+    $('inlet').setAttribute('fill', c(HctIn));
+    $('outlet').setAttribute('fill', c(HctOut));
 
     const r = $('r-hct');
     const chip = $('r-chip');
     r.classList.remove('is-good','is-warn','is-bad');
-    chip.classList.remove('chip-good','chip-warn','chip-bad');
+    chip.classList.remove('m-chip-good','m-chip-warn','m-chip-bad');
     let msg, txt;
     if (!Number.isFinite(HctOut) || HctOut > 100) {
-      r.classList.add('is-bad'); chip.classList.add('chip-bad');
+      r.classList.add('is-bad'); chip.classList.add('m-chip-bad');
       msg = 'Removal exceeds available plasma — physically impossible. Reduce post-dilution or net UF.';
       txt = 'Impossible';
     } else if (HctOut < 40) {
-      r.classList.add('is-good'); chip.classList.add('chip-good');
+      r.classList.add('is-good'); chip.classList.add('m-chip-good');
       msg = 'Healthy headroom for filter life.';
       txt = 'Safe';
     } else if (HctOut < 50) {
-      r.classList.add('is-warn'); chip.classList.add('chip-warn');
+      r.classList.add('is-warn'); chip.classList.add('m-chip-warn');
       msg = 'Workable — but expect a shorter circuit. Pre-dilution helps most.';
       txt = 'Caution';
     } else {
-      r.classList.add('is-bad'); chip.classList.add('chip-bad');
-      msg = 'Expect frequent clotting. Add pre-dilution, raise Qb, or reduce post-dilution/net UF.';
+      r.classList.add('is-bad'); chip.classList.add('m-chip-bad');
+      msg = 'Expect frequent clotting. Add pre-dilution, raise Qb, or reduce post-dilution / net UF.';
       txt = 'High risk';
     }
-    chip.innerHTML = '<span class="chip-dot"></span> ' + txt;
+    chip.innerHTML = '<span class="dot"></span> ' + txt;
     $('r-msg').textContent = msg;
+
+    // Meter scale: 15% → 70%
+    const hctClamp = Math.max(15, Math.min(70, Number.isFinite(HctOut) ? HctOut : Hct));
+    const pct = (hctClamp - 15) / 55 * 100;
+    $('r-marker').style.left = pct + '%';
+
+    // Recommendation
+    const rec = $('rec-text');
+    if (!Number.isFinite(HctOut) || HctOut > 100) {
+      rec.innerHTML = `<strong>Physically impossible removal.</strong> Drop post-dilution or net UF so (Qb − Qpost − Qnet) > 0.`;
+    } else if (HctOut >= 50) {
+      if (Qpre_mLh < 2000) {
+        rec.innerHTML = `<strong>Add pre-dilution.</strong> Raise PBP toward ${Math.min(2500, Qpre_mLh + 1000)} mL/h — the strongest evidence-based lever (van der Voort 2005).`;
+      } else if (BFR < 250) {
+        rec.innerHTML = `<strong>Raise blood flow.</strong> ${BFR} → ${BFR + 30} mL/min if access tolerates — directly drops outlet Hct.`;
+      } else {
+        rec.innerHTML = `<strong>Reduce post-dilution or net UF.</strong> Pre-dilution and BFR are maxed — cut convective load.`;
+      }
+    } else if (HctOut >= 40) {
+      rec.innerHTML = `<strong>Caution zone.</strong> Watch for clotting. Shift post → pre keeps total dose while dropping outlet Hct.`;
+    } else if (Hct > 38 && Qpre_mLh < 1000) {
+      rec.innerHTML = `<strong>Prophylactic pre-dilution.</strong> Patient runs high Hct — add ~1000 mL/h PBP to extend filter life.`;
+    } else {
+      rec.innerHTML = `<strong>Dialed in.</strong> Outlet Hct comfortable. Recheck if Hct rises with transfusion or higher net UF.`;
+    }
   }
 
   inputs.forEach(i => i.el.addEventListener('input', compute));

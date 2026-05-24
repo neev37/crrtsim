@@ -49,7 +49,7 @@
 
   <!-- Quick presets -->
   <div class="presets" id="presets">
-    <button class="preset-btn" data-preset="brcu">BRCU 25/25/0 split</button>
+    <button class="preset-btn" data-preset="brcu">Standard 25/50/25 · pre/dial/post</button>
     <button class="preset-btn" data-preset="high-hct">High Hct · 45%</button>
     <button class="preset-btn" data-preset="post-only">Post-only mistake</button>
     <button class="preset-btn" data-preset="cvvhd">Plain CVVHD</button>
@@ -242,7 +242,7 @@
 
   // Presets — pure flow settings, no modality token.
   const presets = {
-    brcu:       { bfr: 200, hct: 30, pre: 1000, post: 1000, dial: 1000, net: 100, wt: 80 },
+    brcu:       { bfr: 200, hct: 30, pre: 500,  post: 500,  dial: 1000, net: 100, wt: 80 },
     'high-hct': { bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
     'post-only':{ bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
     cvvhd:      { bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 },

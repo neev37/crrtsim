@@ -46,7 +46,7 @@
   <p class="sim-lede">Plasma leaves. Red cells stay. The blood that exits your filter is always more concentrated than the blood that entered. The monitor below mirrors a Prismax/Vantive screen.</p>
 
   <div class="presets" id="presets">
-    <button class="preset-btn" data-preset="typical">Typical CVVHDF</button>
+    <button class="preset-btn" data-preset="typical">Standard 25/50/25 · pre/dial/post</button>
     <button class="preset-btn" data-preset="high-hct">High Hct · 45%</button>
     <button class="preset-btn" data-preset="post-heavy">Post-heavy mistake</button>
     <button class="preset-btn" data-preset="cvvhd">Plain CVVHD</button>
@@ -222,7 +222,7 @@
   const inputs = ['hct','bfr','pre','post','net'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
 
   const presets = {
-    typical:    { hct: 30, bfr: 180, pre: 1000, post: 500,  net: 100 },
+    typical:    { hct: 30, bfr: 200, pre: 500,  post: 500,  net: 100 },
     'high-hct': { hct: 45, bfr: 180, pre: 500,  post: 1500, net: 100 },
     'post-heavy':{hct: 32, bfr: 150, pre: 0,    post: 2200, net: 150 },
     cvvhd:      { hct: 30, bfr: 200, pre: 0,    post: 0,    net: 100 }

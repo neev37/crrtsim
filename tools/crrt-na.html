@@ -20,7 +20,34 @@
   }
   .preset-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
   .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; letter-spacing: -0.005em; }
-  .tbw-readout { font-size: 12px; color: var(--text-muted); margin-top: 6px; letter-spacing: -0.005em; }
+  .patient-block {
+    background: var(--accent-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 14px;
+    padding: 18px 18px 14px;
+    margin: 0 0 26px;
+  }
+  .patient-block .group-label {
+    font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; margin: 0 0 12px;
+  }
+  .patient-block .field { margin-bottom: 16px; }
+  .patient-block .field:last-child { margin-bottom: 0; }
+  .tbw-readout {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+    font-size: 13px; color: var(--text-soft);
+    letter-spacing: -0.005em;
+  }
+  .tbw-readout b {
+    font-size: 18px; color: var(--text); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
 </style>
 </head>
 <body>
@@ -66,6 +93,33 @@
 
     <aside class="panel">
       <h2 class="panel-title">Inputs</h2>
+
+      <!-- Patient block — TBW drives Yessayan's time constant τ = TBW / D_Na -->
+      <div class="patient-block">
+        <p class="group-label">Patient</p>
+
+        <div class="field">
+          <div class="field-row">
+            <span class="field-label">Weight</span>
+            <span class="field-value"><span id="v-wt">80</span><span class="field-unit">kg</span></span>
+          </div>
+          <input id="i-wt" type="range" min="40" max="180" step="1" value="80" />
+        </div>
+
+        <div class="field">
+          <div class="field-label" style="margin-bottom:8px;">Body water fraction</div>
+          <div class="segmented" id="seg-tbw">
+            <button class="active" data-value="0.6">Male · 0.6</button>
+            <button data-value="0.5">Female · 0.5</button>
+            <button data-value="0.55">Elderly · 0.55</button>
+          </div>
+        </div>
+
+        <div class="tbw-readout">
+          <span>TBW estimate</span>
+          <span><b id="tbw-l">48</b> L</span>
+        </div>
+      </div>
 
       <div class="field">
         <div class="field-label" style="margin-bottom:8px;">Modality</div>
@@ -139,25 +193,6 @@
           <span class="field-value"><span id="v-net">50</span><span class="field-unit">mL/h</span></span>
         </div>
         <input id="i-net" type="range" min="0" max="400" step="10" value="50" />
-      </div>
-
-      <div class="field">
-        <div class="field-row">
-          <span class="field-label">Weight</span>
-          <span class="field-value"><span id="v-wt">80</span><span class="field-unit">kg</span></span>
-        </div>
-        <input id="i-wt" type="range" min="40" max="180" step="1" value="80" />
-        <p class="tbw-readout">TBW estimate · <span id="tbw-l">48</span> L</p>
-      </div>
-
-      <div class="field">
-        <div class="field-label" style="margin-bottom:8px;">Body water fraction</div>
-        <div class="segmented" id="seg-tbw">
-          <button class="active" data-value="0.6">Male · 0.6</button>
-          <button data-value="0.5">Female · 0.5</button>
-          <button data-value="0.55">Elderly · 0.55</button>
-        </div>
-        <p class="src" style="margin:8px 0 0;">Rule of thumb. For Watson-formula precision, use measured TBW in the weight slider.</p>
       </div>
 
       <div class="field">

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
-<title>Filtration Fraction · NephSim</title>
-<meta name="description" content="Live CRRT filtration fraction simulator styled as a Prismax-style monitor, with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
+<title>Filter Dynamics · FF + Hct · NephSim</title>
+<meta name="description" content="Live CRRT filter dynamics: filtration fraction + post-filter hematocrit on one Prismax-style monitor, with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
 <link rel="stylesheet" href="../assets/css/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
 <style>
@@ -32,8 +32,7 @@
   <div class="nav-inner">
     <a class="brand" href="../"><span class="brand-mark"></span><span class="brand-text">NephSim</span></a>
     <nav class="nav-links">
-      <a href="filtration-fraction.html">FF</a>
-      <a href="post-filter-hct.html">Hct</a>
+      <a href="filtration-fraction.html">FF + Hct</a>
       <a href="crrt-na.html">Sodium</a>
       <a href="citrate.html">Citrate</a>
       <a href="modalities.html">Modalities</a>
@@ -43,9 +42,9 @@
 
 <main class="sim-shell">
   <a class="sim-back" href="../">← All tools</a>
-  <p class="sim-eyebrow">Hemoconcentration</p>
-  <h1 class="sim-title">Filtration Fraction</h1>
-  <p class="sim-lede">The percent of plasma water pulled across the membrane. Below 20% the filter sings. Above 25% it clots. The monitor below mirrors a Prismax/Vantive screen — pump-by-pump readouts plus the single lever to pull.</p>
+  <p class="sim-eyebrow">Hemoconcentration · Filter life</p>
+  <h1 class="sim-title">Filter Dynamics</h1>
+  <p class="sim-lede">Filtration fraction and post-filter hematocrit — the two numbers that decide how long your circuit survives. One Prismax-style monitor, both metrics live, with the single lever to pull.</p>
 
   <!-- Quick presets -->
   <div class="presets" id="presets">
@@ -53,7 +52,6 @@
     <button class="preset-btn" data-preset="high-hct">High Hct · 45%</button>
     <button class="preset-btn" data-preset="post-only">Post-only mistake</button>
     <button class="preset-btn" data-preset="cvvhd">Plain CVVHD</button>
-    <button class="preset-btn" data-preset="scuf">SCUF</button>
   </div>
 
   <div class="sim-grid">
@@ -61,7 +59,7 @@
     <!-- INPUTS -->
     <aside class="panel">
       <h2 class="panel-title">Pump settings · CVVHDF</h2>
-      <p class="mode-note">One universal mode. <b>Set pre + post = 0</b> to model <b>CVVHD</b>. <b>All flows = 0 except net UF</b> models <b>SCUF</b>.</p>
+      <p class="mode-note">One universal mode. <b>Set pre + post = 0</b> to model <b>CVVHD</b>.</p>
 
       <div class="field">
         <div class="field-row">
@@ -149,7 +147,17 @@
         <div class="readout pump-effluent">
           <span class="readout-label">Post-filter Hct</span>
           <span class="readout-value" id="r-hctout">—<span class="readout-unit-inline">%</span></span>
-          <span class="readout-sub" id="r-hct-sub">×1.0 vs inlet</span>
+          <span class="readout-sub" id="r-hct-sub">×1.0 vs pre-filter</span>
+        </div>
+        <div class="readout pump-pbp">
+          <span class="readout-label">Filter inlet Hct</span>
+          <span class="readout-value" id="r-hctin">—<span class="readout-unit-inline">%</span></span>
+          <span class="readout-sub" id="r-hctin-sub">after pre-dilution</span>
+        </div>
+        <div class="readout pump-pfr">
+          <span class="readout-label">Hct rise</span>
+          <span class="readout-value" id="r-hctrise">—<span class="readout-unit-inline">×</span></span>
+          <span class="readout-sub">post ÷ pre-filter</span>
         </div>
         <div class="readout pump-dial">
           <span class="readout-label">Delivered dose</span>
@@ -196,12 +204,16 @@
     <details open>
       <summary>How this works</summary>
       <div class="explainer-body">
-        <p><strong>The principle.</strong> As plasma is pulled across the membrane, the blood continuing down the filter becomes progressively more concentrated. Past a critical point, red cells and proteins pack so tightly that the filter clots — fast.</p>
-        <p><strong>The formula.</strong></p>
+        <p><strong>The principle.</strong> As plasma is pulled across the membrane, the blood continuing down the filter becomes progressively more concentrated. Past a critical point, red cells and proteins pack so tightly that the filter clots — fast. Two numbers tell the story: <em>filtration fraction</em> (what % of plasma you're pulling) and <em>post-filter Hct</em> (how concentrated the blood gets by the time it reaches the venous outlet).</p>
+        <p><strong>Filtration fraction.</strong></p>
         <p><span class="formula">FF = (Q<sub>pre</sub> + Q<sub>post</sub> + Q<sub>net</sub>) / (Q<sub>plasma</sub> + Q<sub>pre</sub>)</span></p>
         <p>With Q<sub>plasma</sub> = Q<sub>b</sub> × (1 − Hct). Dialysate doesn't appear in FF — it's diffusive, not convective. It still counts toward delivered dose.</p>
-        <p><strong>Thresholds.</strong> Most adult protocols target FF below 20%; 20–25% is caution; above 25% filter survival falls sharply (Joannidis 2007, Tan 2002). KDIGO target effluent dose is 20–25 mL/kg/h delivered (RENAL, ATN trials).</p>
-        <p><strong>One universal mode.</strong> The simulator is set up as CVVHDF — the most general form. Set pre + post replacement to 0 and you have CVVHD; turn all flows except net UF to 0 and you have SCUF. That's how the Prismax thinks too: one pump set, four flows.</p>
+        <p><strong>Post-filter hematocrit.</strong> Red cells don't cross the membrane, so as plasma leaves, the remaining blood concentrates by exactly:</p>
+        <p><span class="formula">Hct<sub>post</sub> = (Q<sub>b</sub> × Hct<sub>pre</sub>) / (Q<sub>b</sub> − Q<sub>post</sub> − Q<sub>net</sub>)</span></p>
+        <p>Pre-dilution dilutes the blood <em>before</em> the membrane, lowering effective filter inlet Hct:</p>
+        <p><span class="formula">Hct<sub>inlet</sub> = (Q<sub>b</sub> × Hct<sub>pre</sub>) / (Q<sub>b</sub> + Q<sub>pre</sub>)</span></p>
+        <p><strong>Thresholds.</strong> FF &lt; 20% safe · 20–25% caution · &gt; 25% high clot risk (Joannidis 2007, Tan 2002). Post-filter Hct &lt; 40% safe · 40–50% caution · &gt; 50% expect frequent clotting. KDIGO target effluent dose is 20–25 mL/kg/h delivered (RENAL, ATN trials).</p>
+        <p><strong>One universal mode.</strong> The simulator is set up as CVVHDF — the most general form. Set pre + post replacement to 0 and you have CVVHD. That's how the Prismax thinks too: one pump set, four flows.</p>
         <p><strong>Levers, ranked by impact.</strong></p>
         <ol style="padding-left:22px;margin:8px 0 0;">
           <li><strong>Pre-dilution</strong> — raises the denominator without touching dose. Doubles filter life (van der Voort 2005, Tan 2002).</li>
@@ -245,8 +257,7 @@
     brcu:       { bfr: 200, hct: 30, pre: 500,  post: 500,  dial: 1000, net: 100, wt: 80 },
     'high-hct': { bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
     'post-only':{ bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
-    cvvhd:      { bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 },
-    scuf:       { bfr: 150, hct: 32, pre: 0,    post: 0,    dial: 0,    net: 200, wt: 80 }
+    cvvhd:      { bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 }
   };
   $('presets').addEventListener('click', (e) => {
     const btn = e.target.closest('.preset-btn');
@@ -265,7 +276,7 @@
   });
 
   function detectMode(pre, post, dial, net) {
-    if (pre === 0 && post === 0 && dial === 0) return net > 0 ? 'SCUF' : 'IDLE';
+    if (pre === 0 && post === 0 && dial === 0) return net > 0 ? 'UF only' : 'IDLE';
     if (pre === 0 && post === 0) return 'CVVHD';
     if (dial === 0)              return 'CVVH';
     return 'CVVHDF';
@@ -301,6 +312,10 @@
     const denomHct = BFR - Qpost - Qnet;
     const HctOut = denomHct > 0 ? (BFR * Hct) / denomHct * 100 : NaN;
     const hctRise = Number.isFinite(HctOut) ? (HctOut / (Hct * 100)) : NaN;
+    // Filter INLET Hct = Hct after pre-dilution mixing, before the membrane.
+    // Hct_in = (BFR · Hct) / (BFR + Qpre)
+    const HctIn = (BFR + Qpre) > 0 ? (BFR * Hct) / (BFR + Qpre) * 100 : NaN;
+    const preDilutionDrop = Number.isFinite(HctIn) ? (Hct * 100 - HctIn) : 0;
 
     const totalEffluent = Qpre_mLh + Qpost_mLh + Qdial_mLh + Qnet_mLh;
     const dose = totalEffluent / Wt;
@@ -314,14 +329,19 @@
     $('r-ff').innerHTML = NephSim.fmt.one(FF) + '<span class="machine-unit">%</span>';
     $('r-qp').innerHTML = NephSim.fmt.int(Qp) + '<span class="readout-unit-inline">mL/min</span>';
     $('r-hctout').innerHTML = NephSim.fmt.one(HctOut) + '<span class="readout-unit-inline">%</span>';
+    $('r-hctin').innerHTML  = NephSim.fmt.one(HctIn)  + '<span class="readout-unit-inline">%</span>';
+    $('r-hctrise').innerHTML = (Number.isFinite(hctRise) ? hctRise.toFixed(2) : '—') + '<span class="readout-unit-inline">×</span>';
     $('r-dose').innerHTML   = NephSim.fmt.one(dose) + '<span class="readout-unit-inline">mL/kg/h</span>';
     $('r-dna').innerHTML    = (Number.isFinite(Dna_mLmin) ? NephSim.fmt.int(Dna_mLmin) : '—') + '<span class="readout-unit-inline">mL/min</span>';
     $('r-pen-sub').textContent = penalty > 0.05
       ? `${NephSim.fmt.one(penalty)}% pre-dilution penalty`
       : 'no pre-dilution penalty';
     $('r-hct-sub').textContent = Number.isFinite(hctRise)
-      ? `×${hctRise.toFixed(2)} vs inlet`
+      ? `×${hctRise.toFixed(2)} vs pre-filter`
       : '—';
+    $('r-hctin-sub').textContent = preDilutionDrop > 0.1
+      ? `−${preDilutionDrop.toFixed(1)} pts from PBP`
+      : 'no pre-dilution';
 
     const r = $('r-ff');
     r.classList.remove('is-good','is-warn','is-bad');

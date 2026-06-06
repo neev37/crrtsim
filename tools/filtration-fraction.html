@@ -24,6 +24,41 @@
     margin: 6px 0 22px; line-height: 1.5;
   }
   .mode-note b { color: var(--text-soft); font-weight: 600; }
+
+  /* Filter cross-section, mounted inside the Prismax monitor */
+  .machine-viz {
+    padding: 14px 22px 18px;
+    background: rgba(0,0,0,0.18);
+    border-top: 1px solid var(--m-line);
+    border-bottom: 1px solid var(--m-line);
+  }
+  .machine-viz-label {
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--m-text-dim);
+    font-weight: 500;
+  }
+  .machine-viz-cite {
+    margin: 6px 0 0;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--m-text-dim);
+    letter-spacing: 0.03em;
+    text-align: center;
+  }
+
+  /* Mobile: monitor (with viz) sits BEFORE the input panel,
+     so the visualization is the first thing the user sees */
+  @media (max-width: 880px) {
+    .sim-grid > .panel   { order: 2; }
+    .sim-grid > .machine { order: 1; }
+  }
+  @media (max-width: 640px) {
+    .machine-viz { padding: 12px 18px 14px; }
+  }
 </style>
 </head>
 <body>
@@ -143,6 +178,13 @@
         <p class="machine-meter-cite">Targets per Joannidis &amp; Oudemans-van Straaten, <i>Crit Care</i> 2007</p>
       </div>
 
+      <!-- Filter cross-section, inside the monitor -->
+      <div class="machine-viz">
+        <p class="machine-viz-label">Filter cross-section · blood concentration</p>
+        <svg id="filter-viz" viewBox="0 0 700 180" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="font-family:ui-monospace,SF Mono,Menlo,monospace;display:block;width:100%;height:auto;"></svg>
+        <p class="machine-viz-cite">Deeper red = higher post-filter Hct = closer to clotting</p>
+      </div>
+
       <div class="machine-readouts">
         <div class="readout pump-effluent">
           <span class="readout-label">Post-filter Hct</span>
@@ -190,13 +232,6 @@
       </div>
     </section>
 
-  </div>
-
-  <!-- Visual: filter cross-section -->
-  <div class="chart-wrap" style="margin-top:36px;">
-    <p class="panel-title" style="margin:0 0 18px;">Blood as it travels down the filter</p>
-    <svg id="filter-viz" viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="font-family:-apple-system,sans-serif;display:block;"></svg>
-    <p class="src" style="margin:14px 0 0;line-height:1.5;">Blood enters left at your Hct and exits right concentrated by FF. Deeper red = higher post-filter Hct = closer to clotting. Bar at top shows FF against the 20% / 25% thresholds.</p>
   </div>
 
   <!-- HOW IT WORKS -->
@@ -428,12 +463,13 @@
 
   function drawFilter(Hct, HctOut, FF) {
     const svg = $('filter-viz');
-    const W = 700, H = 200;
+    const W = 700, H = 180;
+    // Hct-to-color: lighter pink at low Hct → deeper crimson at high
     const colorAt = (h) => {
       const t = Math.max(0, Math.min(1, (h - 0.15) / (0.60 - 0.15)));
-      const r = Math.round(243 + (138 - 243) * t);
-      const g = Math.round(160 + (26 - 160) * t);
-      const b = Math.round(160 + (26 - 160) * t);
+      const r = Math.round(232 + (130 - 232) * t);
+      const g = Math.round(120 + (24  - 120) * t);
+      const b = Math.round(132 + (40  - 132) * t);
       return `rgb(${r},${g},${b})`;
     };
     const fluidIn  = colorAt(Hct);
@@ -441,36 +477,51 @@
 
     const x0 = 80, x1 = 620;
     const yMid = H/2;
-    const halfH = 26;
+    const halfH = 24;
     const ffPct = Math.max(0, Math.min(40, Number.isFinite(FF) ? FF : 0));
-    const ffColor = ffPct < 20 ? 'var(--good)' : ffPct < 25 ? 'var(--warn)' : 'var(--bad)';
+    // Machine palette colors for FF zone
+    const ffColor = ffPct < 20 ? '#30d158' : ffPct < 25 ? '#ffd60a' : '#ff453a';
 
+    // Inlet/outlet ports — colored to match in/out blood
     svg.innerHTML = `
       <defs>
         <linearGradient id="bloodGrad" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0%" stop-color="${fluidIn}"/>
+          <stop offset="0%"  stop-color="${fluidIn}"/>
           <stop offset="100%" stop-color="${fluidOut}"/>
         </linearGradient>
       </defs>
-      <rect x="20" y="${yMid - 10}" width="60" height="20" fill="var(--line)" rx="3"/>
-      <rect x="620" y="${yMid - 10}" width="60" height="20" fill="var(--line)" rx="3"/>
-      <rect x="${x0}" y="${yMid - halfH - 8}" width="${x1-x0}" height="${(halfH*2) + 16}" rx="14"
-            fill="var(--bg-input)" stroke="var(--line-soft)" stroke-width="1"/>
-      ${[-18,-9,0,9,18].map(off => `<line x1="${x0+6}" x2="${x1-6}" y1="${yMid+off}" y2="${yMid+off}" stroke="rgba(0,102,255,0.15)" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
-      <rect x="${x0+4}" y="${yMid - halfH}" width="${x1-x0-8}" height="${halfH*2}" fill="url(#bloodGrad)" opacity="0.55" rx="6"/>
-      <path d="M ${(x0+x1)/2 - 6} ${yMid + halfH + 6} L ${(x0+x1)/2 + 6} ${yMid + halfH + 6} L ${(x0+x1)/2} ${yMid + halfH + 22} Z"
-            fill="var(--accent)" opacity="0.85"/>
-      <text x="${(x0+x1)/2}" y="${yMid + halfH + 42}" text-anchor="middle"
-            fill="var(--text-muted)" font-size="11">effluent · ${NephSim.fmt.one(FF)}% of plasma</text>
-      <text x="30" y="${yMid - 24}" fill="var(--text-muted)" font-size="11">blood in</text>
-      <text x="30" y="${yMid + 36}" fill="var(--text)" font-size="13" font-weight="600">Hct ${(Hct*100).toFixed(0)}%</text>
-      <text x="670" y="${yMid - 24}" fill="var(--text-muted)" font-size="11" text-anchor="end">blood out</text>
-      <text x="670" y="${yMid + 36}" fill="var(--text)" font-size="13" font-weight="600" text-anchor="end">Hct ${Number.isFinite(HctOut) ? HctOut.toFixed(0) : '—'}%</text>
-      <rect x="${x0}" y="${yMid - halfH - 32}" width="${x1-x0}" height="6" rx="3" fill="var(--line-soft)"/>
-      <rect x="${x0}" y="${yMid - halfH - 32}" width="${(x1-x0) * (ffPct/40)}" height="6" rx="3"
-            fill="${ffColor}"/>
-      <text x="${x0}" y="${yMid - halfH - 38}" fill="var(--text-muted)" font-size="10">FF</text>
-      <text x="${x1}" y="${yMid - halfH - 38}" fill="var(--text-muted)" font-size="10" text-anchor="end">40%</text>
+
+      <!-- FF bar at top -->
+      <rect x="${x0}" y="${yMid - halfH - 32}" width="${x1-x0}" height="5" rx="2.5" fill="#1f2733"/>
+      <rect x="${x0}" y="${yMid - halfH - 32}" width="${(x1-x0) * (ffPct/40)}" height="5" rx="2.5" fill="${ffColor}"/>
+      <text x="${x0}" y="${yMid - halfH - 40}" fill="#7a8597" font-size="10" letter-spacing="1.2">FF</text>
+      <text x="${x1}" y="${yMid - halfH - 40}" fill="#7a8597" font-size="10" letter-spacing="1.2" text-anchor="end">40%</text>
+
+      <!-- Blood line in/out -->
+      <rect x="20"  y="${yMid - 7}" width="60" height="14" fill="${fluidIn}"  rx="3" opacity="0.85"/>
+      <rect x="620" y="${yMid - 7}" width="60" height="14" fill="${fluidOut}" rx="3" opacity="0.85"/>
+
+      <!-- Filter body housing -->
+      <rect x="${x0}" y="${yMid - halfH - 6}" width="${x1-x0}" height="${(halfH*2) + 12}" rx="12"
+            fill="#131922" stroke="#1f2733" stroke-width="1"/>
+
+      <!-- Hollow-fiber stitches -->
+      ${[-16,-8,0,8,16].map(off => `<line x1="${x0+6}" x2="${x1-6}" y1="${yMid+off}" y2="${yMid+off}" stroke="rgba(90,200,250,0.18)" stroke-width="1" stroke-dasharray="2 3"/>`).join('')}
+
+      <!-- Blood column inside filter (gradient = concentration gradient) -->
+      <rect x="${x0+4}" y="${yMid - halfH}" width="${x1-x0-8}" height="${halfH*2}" fill="url(#bloodGrad)" opacity="0.78" rx="6"/>
+
+      <!-- Effluent arrow down -->
+      <path d="M ${(x0+x1)/2 - 6} ${yMid + halfH + 4} L ${(x0+x1)/2 + 6} ${yMid + halfH + 4} L ${(x0+x1)/2} ${yMid + halfH + 18} Z"
+            fill="#5ac8fa" opacity="0.9"/>
+      <text x="${(x0+x1)/2}" y="${yMid + halfH + 38}" text-anchor="middle"
+            fill="#7a8597" font-size="11" letter-spacing="0.6">effluent · ${NephSim.fmt.one(FF)}% of plasma</text>
+
+      <!-- In/out labels -->
+      <text x="30"  y="${yMid - 16}" fill="#7a8597" font-size="9.5" letter-spacing="1.4">BLOOD IN</text>
+      <text x="30"  y="${yMid + 32}" fill="#e8eef5" font-size="13" font-weight="600">${(Hct*100).toFixed(0)}%</text>
+      <text x="670" y="${yMid - 16}" fill="#7a8597" font-size="9.5" letter-spacing="1.4" text-anchor="end">BLOOD OUT</text>
+      <text x="670" y="${yMid + 32}" fill="#e8eef5" font-size="13" font-weight="600" text-anchor="end">${Number.isFinite(HctOut) ? HctOut.toFixed(0) : '—'}%</text>
     `;
   }
 

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 <title>Filter Dynamics · FF + Hct · NephSim</title>
-<meta name="description" content="Live CRRT filter dynamics: filtration fraction + post-filter hematocrit on one Prismax-style monitor, with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
+<meta name="description" content="Live CRRT filter dynamics: filtration fraction + post-filter hematocrit on twin dials, with KDIGO-graded dose, sodium dialysance, and an evidence-based recommendation engine." />
 <link rel="stylesheet" href="../assets/css/styles.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%97%89%3C/text%3E%3C/svg%3E" />
 <style>
@@ -25,11 +25,121 @@
   }
   .mode-note b { color: var(--text-soft); font-weight: 600; }
 
-  /* Filter cross-section — mounted inside the Prismax monitor.
-     HTML drives the labels (so they reflow on mobile);
-     SVG is just the gradient strip + effluent arrow. */
+  /* Hide the old machine bits we replaced */
+  .machine-main, .machine-meter, .machine-statusrow, .machine-readouts { display: none !important; }
+
+  /* ════ TWIN DIALS ════ */
+  .dial-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 28px 12px 26px;
+    position: relative;
+    gap: 4px;
+  }
+  .dial-row::after {
+    content: "";
+    position: absolute;
+    top: 30px; bottom: 26px; left: 50%;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--m-line) 20%, var(--m-line) 80%, transparent);
+  }
+  .dial {
+    display: flex; flex-direction: column;
+    align-items: center;
+    --zone-color: var(--m-good);
+    --zone-glow:  rgba(48,209,88,0.40);
+  }
+  .dial[data-zone="warn"] { --zone-color: var(--m-warn); --zone-glow: rgba(255,214,10,0.40); }
+  .dial[data-zone="bad"]  { --zone-color: var(--m-bad);  --zone-glow: rgba(255,69,58,0.45); }
+
+  .dial-graphic {
+    position: relative;
+    width: clamp(150px, 42vw, 184px);
+    height: clamp(150px, 42vw, 184px);
+  }
+  .dial-graphic svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .dial-track {
+    fill: none;
+    stroke: rgba(255,255,255,0.05);
+    stroke-width: 9;
+  }
+  .dial-arc {
+    fill: none;
+    stroke: var(--zone-color);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-dasharray: 364.42;     /* 2π × 58 */
+    stroke-dashoffset: 364.42;
+    transition: stroke-dashoffset 480ms cubic-bezier(0.2,0.7,0.2,1),
+                stroke 280ms cubic-bezier(0.2,0.7,0.2,1);
+    filter: drop-shadow(0 0 7px var(--zone-glow));
+  }
+  /* Threshold tick marks on the dial track */
+  .dial-tick {
+    stroke: var(--m-text-dim);
+    stroke-width: 1.6;
+    opacity: 0.45;
+  }
+
+  .dial-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .dial-value {
+    font-family: var(--font-mono);
+    font-size: clamp(34px, 7.2vw, 46px);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--m-text);
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 12px rgba(255,255,255,0.04);
+  }
+  .dial-unit {
+    font-size: 0.40em;
+    color: var(--m-text-dim);
+    margin-left: 3px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .dial-label {
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--m-text-dim);
+    font-weight: 500;
+    text-align: center;
+  }
+  .dial-zone {
+    margin-top: 9px;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px 3px 9px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    border: 1px solid currentColor;
+    color: var(--zone-color);
+    background: rgba(0,0,0,0.25);
+  }
+  .dial-zone .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 5px currentColor;
+    margin-right: 7px;
+  }
+
+  /* ════ FILTER CROSS-SECTION (refined) ════ */
   .machine-viz {
-    padding: 18px 22px 20px;
+    padding: 20px 24px 22px;
     background: rgba(0,0,0,0.22);
     border-top: 1px solid var(--m-line);
     border-bottom: 1px solid var(--m-line);
@@ -42,86 +152,147 @@
     text-transform: uppercase;
     color: var(--m-text-dim);
     font-weight: 500;
+    text-align: center;
   }
   .viz-flow {
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
   }
   .viz-port {
     display: flex; flex-direction: column;
-    align-items: center; gap: 3px;
+    align-items: center; gap: 6px;
+    min-width: 56px;
   }
   .viz-port-dot {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 30px; height: 30px;
+    border-radius: 50%;
     background: currentColor;
-    box-shadow: 0 0 14px currentColor, inset 0 -3px 6px rgba(0,0,0,0.25);
-    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
-  }
-  .viz-port-name {
-    font-family: var(--font-mono); font-size: 9.5px;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--m-text-dim);
-    margin-top: 4px;
+    box-shadow: 0 0 14px currentColor, inset 0 -4px 8px rgba(0,0,0,0.30);
+    transition: background-color 280ms cubic-bezier(0.2,0.7,0.2,1);
   }
   .viz-port-value {
-    font-family: var(--font-mono); font-size: 14px;
-    font-weight: 600; color: var(--m-text);
+    font-family: var(--font-mono);
+    font-size: 15px; font-weight: 600;
+    color: var(--m-text);
     font-variant-numeric: tabular-nums;
+    line-height: 1;
   }
+  .viz-port-name {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--m-text-dim);
+    line-height: 1;
+    margin-top: 1px;
+  }
+  .viz-bar-wrap { position: relative; }
   .viz-bar {
-    position: relative;
-    height: 38px;
+    height: 36px;
     border-radius: 8px;
+    background: linear-gradient(90deg, var(--viz-in, #e87884) 0%, var(--viz-out, #b34050) 100%);
+    box-shadow: inset 0 0 0 1px var(--m-line), inset 0 0 18px rgba(0,0,0,0.30);
+    transition: background 280ms cubic-bezier(0.2,0.7,0.2,1);
+    position: relative;
     overflow: hidden;
-    background: linear-gradient(90deg, var(--viz-in) 0%, var(--viz-out) 100%);
-    box-shadow: inset 0 0 0 1px var(--m-line);
-    transition: background var(--dur) var(--ease);
   }
-  /* Hollow-fiber stitches */
+  /* Hollow-fiber lines */
   .viz-bar::before {
     content: "";
     position: absolute; inset: 0;
-    background-image:
-      linear-gradient(180deg, transparent calc(50% - 0.5px), rgba(255,255,255,0.10) 50%, transparent calc(50% + 0.5px));
-    background-size: 100% 7px;
+    background-image: linear-gradient(180deg, transparent 49.5%, rgba(255,255,255,0.12) 50%, transparent 50.5%);
+    background-size: 100% 8px;
     background-repeat: repeat-y;
-    background-position: 0 0;
   }
   .viz-effluent {
-    margin-top: 10px;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-    font-family: var(--font-mono); font-size: 11px;
+    margin-top: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
     color: var(--m-text-dim);
     letter-spacing: 0.04em;
   }
   .viz-effluent-arrow {
     width: 0; height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 7px solid var(--m-accent);
-    filter: drop-shadow(0 0 4px var(--m-accent));
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--m-accent);
+    filter: drop-shadow(0 0 5px var(--m-accent));
   }
-  .viz-effluent b { color: var(--m-text); font-weight: 600; font-variant-numeric: tabular-nums; }
-
-  /* Hct severity tinting on the port dots */
-  .viz-port.is-good { color: #6bd690; }   /* light → mid Hct */
-  .viz-port.is-warn { color: #d97a85; }   /* mid → high Hct */
-  .viz-port.is-bad  { color: #8a2030; }   /* very high Hct */
-
-  /* 2-column readout grid even on mobile so 4 tiles fit cleanly */
-  @media (max-width: 640px) {
-    .machine-readouts { grid-template-columns: 1fr 1fr; }
-    .machine-viz     { padding: 14px 18px 16px; }
-    .viz-flow        { gap: 10px; }
-    .viz-port-dot    { width: 24px; height: 24px; }
+  .viz-effluent b {
+    color: var(--m-text); font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
-  /* Mobile: monitor (with viz) sits BEFORE the input panel */
+  /* ════ INFO ROWS (replaces tile grid) ════ */
+  .machine-info { padding: 4px 0 8px; }
+  .info-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 12px;
+    padding: 13px 24px 12px;
+    border-bottom: 1px solid var(--m-line-soft);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-icon {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--c, var(--m-accent));
+    box-shadow: 0 0 5px var(--c, var(--m-accent));
+    align-self: center;
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+  .info-label {
+    font-family: var(--font);
+    font-size: 13.5px;
+    color: var(--m-text-soft);
+    flex: 1;
+    letter-spacing: -0.005em;
+  }
+  .info-value {
+    font-family: var(--font-mono);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--m-text);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .info-value.is-good { color: var(--m-good); }
+  .info-value.is-warn { color: var(--m-warn); }
+  .info-value.is-bad  { color: var(--m-bad); }
+  .info-value .info-unit {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--m-text-dim);
+    margin-left: 4px;
+    font-weight: 500;
+  }
+  .info-sub {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--m-text-dim);
+    letter-spacing: 0.03em;
+    padding-left: 24px;
+    margin-top: 4px;
+  }
+
+  /* Mobile niceties */
   @media (max-width: 880px) {
     .sim-grid > .panel   { order: 2; }
     .sim-grid > .machine { order: 1; }
+  }
+  @media (max-width: 480px) {
+    .dial-row { padding: 22px 6px 22px; gap: 0; }
+    .viz-flow { gap: 8px; }
+    .viz-port-dot { width: 26px; height: 26px; }
+    .viz-bar { height: 30px; }
+    .info-row { padding: 12px 18px 11px; }
+    .info-sub { padding-left: 18px; }
   }
 </style>
 </head>
@@ -143,7 +314,7 @@
   <a class="sim-back" href="../">← All tools</a>
   <p class="sim-eyebrow">Hemoconcentration · Filter life</p>
   <h1 class="sim-title">Filter Dynamics</h1>
-  <p class="sim-lede">Filtration fraction and post-filter hematocrit — the two numbers that decide how long your circuit survives. One Prismax-style monitor, both metrics live, with the single lever to pull.</p>
+  <p class="sim-lede">Twin dials for the two numbers that decide filter survival — filtration fraction and post-filter hematocrit. One Prismax-style monitor, both metrics glanceable, with the single lever to pull.</p>
 
   <!-- Quick presets -->
   <div class="presets" id="presets">
@@ -225,67 +396,94 @@
         <span class="machine-mode" id="m-mode">CVVHDF</span>
       </div>
 
-      <div class="machine-main">
-        <p class="machine-label">Filtration Fraction</p>
-        <p class="machine-big" id="r-ff">—<span class="machine-unit">%</span></p>
-        <div class="machine-statusrow">
-          <span id="r-chip" class="machine-chip m-chip-good"><span class="dot"></span> SAFE</span>
-          <span class="machine-msg" id="r-msg">Drag a slider to see how your filter responds.</span>
+      <!-- Twin dials hero -->
+      <div class="dial-row">
+        <!-- FF dial -->
+        <div class="dial" id="dial-ff" data-zone="good">
+          <div class="dial-graphic">
+            <svg viewBox="0 0 140 140" aria-hidden="true">
+              <circle class="dial-track" cx="70" cy="70" r="58"/>
+              <!-- Threshold ticks: 20% and 25% on a 0-40 scale -->
+              <line class="dial-tick" x1="70" y1="6"  x2="70" y2="14"
+                    transform="rotate(180 70 70)"/>
+              <line class="dial-tick" x1="70" y1="6"  x2="70" y2="14"
+                    transform="rotate(225 70 70)"/>
+              <circle class="dial-arc" cx="70" cy="70" r="58"
+                      id="dial-ff-arc" transform="rotate(-90 70 70)"/>
+            </svg>
+            <div class="dial-center">
+              <span class="dial-value" id="r-ff">—</span><span class="dial-unit">%</span>
+            </div>
+          </div>
+          <span class="dial-label">Filtration Fraction</span>
+          <span class="dial-zone" id="r-ff-zone"><span class="dot"></span>—</span>
+        </div>
+
+        <!-- Hct dial -->
+        <div class="dial" id="dial-hct" data-zone="good">
+          <div class="dial-graphic">
+            <svg viewBox="0 0 140 140" aria-hidden="true">
+              <circle class="dial-track" cx="70" cy="70" r="58"/>
+              <!-- Threshold ticks: 40% and 50% on a 0-70 scale → 205.7° and 257.1° -->
+              <line class="dial-tick" x1="70" y1="6"  x2="70" y2="14"
+                    transform="rotate(205.7 70 70)"/>
+              <line class="dial-tick" x1="70" y1="6"  x2="70" y2="14"
+                    transform="rotate(257.1 70 70)"/>
+              <circle class="dial-arc" cx="70" cy="70" r="58"
+                      id="dial-hct-arc" transform="rotate(-90 70 70)"/>
+            </svg>
+            <div class="dial-center">
+              <span class="dial-value" id="r-hctout">—</span><span class="dial-unit">%</span>
+            </div>
+          </div>
+          <span class="dial-label">Post-filter Hct</span>
+          <span class="dial-zone" id="r-hctout-zone"><span class="dot"></span>—</span>
         </div>
       </div>
 
-      <div class="machine-meter">
-        <div class="machine-meter-bar" aria-hidden="true">
-          <span class="machine-meter-marker" id="r-marker" style="left:0%"></span>
-        </div>
-        <div class="machine-meter-scale"><span>0%</span><span>20%</span><span>25%</span><span>40%</span></div>
-        <p class="machine-meter-cite">Targets per Joannidis &amp; Oudemans-van Straaten, <i>Crit Care</i> 2007</p>
-      </div>
-
-      <!-- Filter cross-section · clean HTML/CSS, reflows on mobile -->
+      <!-- Filter cross-section -->
       <div class="machine-viz">
         <p class="machine-viz-label">Filter cross-section</p>
         <div class="viz-flow">
           <div class="viz-port" id="viz-in">
             <span class="viz-port-dot"></span>
             <span class="viz-port-value" id="viz-in-val">30%</span>
-            <span class="viz-port-name">Blood in</span>
+            <span class="viz-port-name">In</span>
           </div>
-          <div>
+          <div class="viz-bar-wrap">
             <div class="viz-bar" id="viz-bar"></div>
             <div class="viz-effluent">
               <span class="viz-effluent-arrow"></span>
-              Effluent · <b id="viz-eff">—%</b> of plasma
+              Effluent · <b id="viz-eff">—%</b>
             </div>
           </div>
           <div class="viz-port" id="viz-out">
             <span class="viz-port-dot"></span>
             <span class="viz-port-value" id="viz-out-val">32%</span>
-            <span class="viz-port-name">Blood out</span>
+            <span class="viz-port-name">Out</span>
           </div>
         </div>
       </div>
 
-      <div class="machine-readouts">
-        <div class="readout pump-effluent">
-          <span class="readout-label">Post-filter Hct</span>
-          <span class="readout-value" id="r-hctout">—<span class="readout-unit-inline">%</span></span>
-          <span class="readout-sub" id="r-hct-sub">×1.0 vs pre-filter</span>
+      <!-- Compact info rows -->
+      <div class="machine-info">
+        <div class="info-row">
+          <span class="info-icon" style="--c:var(--pump-pbp)"></span>
+          <span class="info-label">Filter inlet Hct</span>
+          <span class="info-value" id="r-hctin">—<span class="info-unit">%</span></span>
+          <span class="info-sub" id="r-hctin-sub">after pre-dilution</span>
         </div>
-        <div class="readout pump-pbp">
-          <span class="readout-label">Filter inlet Hct</span>
-          <span class="readout-value" id="r-hctin">—<span class="readout-unit-inline">%</span></span>
-          <span class="readout-sub" id="r-hctin-sub">after pre-dilution</span>
+        <div class="info-row">
+          <span class="info-icon" style="--c:var(--pump-dial)"></span>
+          <span class="info-label">Delivered dose</span>
+          <span class="info-value" id="r-dose">—<span class="info-unit">mL/kg/h</span></span>
+          <span class="info-sub">KDIGO target 20–25</span>
         </div>
-        <div class="readout pump-dial">
-          <span class="readout-label">Delivered dose</span>
-          <span class="readout-value" id="r-dose">—<span class="readout-unit-inline">mL/kg/h</span></span>
-          <span class="readout-sub">KDIGO target 20–25</span>
-        </div>
-        <div class="readout pump-replace">
-          <span class="readout-label">Sodium dialysance</span>
-          <span class="readout-value" id="r-dna">—<span class="readout-unit-inline">mL/min</span></span>
-          <span class="readout-sub" id="r-pen-sub">— penalty</span>
+        <div class="info-row">
+          <span class="info-icon" style="--c:var(--pump-replace)"></span>
+          <span class="info-label">Sodium dialysance</span>
+          <span class="info-value" id="r-dna">—<span class="info-unit">mL/min</span></span>
+          <span class="info-sub" id="r-pen-sub">— penalty</span>
         </div>
       </div>
 
@@ -358,7 +556,6 @@
   const $ = (id) => document.getElementById(id);
   const inputs = ['bfr','hct','pre','post','dial','net','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
 
-  // Presets — pure flow settings, no modality token.
   const presets = {
     brcu:       { bfr: 200, hct: 30, pre: 500,  post: 500,  dial: 1000, net: 100, wt: 80 },
     'high-hct': { bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
@@ -388,6 +585,61 @@
     return 'CVVHDF';
   }
 
+  // Dial circumference = 2π × 58
+  const DIAL_CIRC = 2 * Math.PI * 58;
+
+  function paintDial(value, t, ids) {
+    const dial = $(ids.dial);
+    const arc  = $(ids.arc);
+    const valE = $(ids.val);
+    const zone = $(ids.zone);
+
+    if (!Number.isFinite(value)) {
+      arc.style.strokeDashoffset = DIAL_CIRC;
+      valE.textContent = '—';
+      dial.dataset.zone = 'good';
+      zone.innerHTML = '<span class="dot"></span>—';
+      return;
+    }
+
+    const pct = Math.max(0, Math.min(1, value / t.max));
+    arc.style.strokeDashoffset = DIAL_CIRC * (1 - pct);
+
+    let z = 'good', label = 'SAFE';
+    if (value >= t.bad)       { z = 'bad';  label = 'HIGH RISK'; }
+    else if (value >= t.warn) { z = 'warn'; label = 'CAUTION'; }
+    dial.dataset.zone = z;
+    zone.innerHTML = `<span class="dot"></span>${label}`;
+    valE.textContent = value.toFixed(1);
+  }
+
+  function paintViz(Hct, HctOut, FF) {
+    const colorAt = (h) => {
+      const tt = Math.max(0, Math.min(1, (h - 0.15) / (0.60 - 0.15)));
+      const r = Math.round(232 + (130 - 232) * tt);
+      const g = Math.round(120 + (24  - 120) * tt);
+      const b = Math.round(132 + (40  - 132) * tt);
+      return `rgb(${r},${g},${b})`;
+    };
+    const fluidIn  = colorAt(Hct);
+    const fluidOut = colorAt(Number.isFinite(HctOut) ? HctOut/100 : Hct);
+
+    const bar = $('viz-bar');
+    bar.style.setProperty('--viz-in',  fluidIn);
+    bar.style.setProperty('--viz-out', fluidOut);
+
+    const inDot  = document.querySelector('#viz-in  .viz-port-dot');
+    const outDot = document.querySelector('#viz-out .viz-port-dot');
+    inDot.style.background  = fluidIn;
+    inDot.style.boxShadow   = `0 0 14px ${fluidIn}, inset 0 -4px 8px rgba(0,0,0,0.30)`;
+    outDot.style.background = fluidOut;
+    outDot.style.boxShadow  = `0 0 14px ${fluidOut}, inset 0 -4px 8px rgba(0,0,0,0.30)`;
+
+    $('viz-in-val').textContent  = `${(Hct*100).toFixed(0)}%`;
+    $('viz-out-val').textContent = Number.isFinite(HctOut) ? `${HctOut.toFixed(0)}%` : '—';
+    $('viz-eff').textContent     = Number.isFinite(FF) ? `${FF.toFixed(1)}%` : '—';
+  }
+
   function compute() {
     const BFR  = parseFloat($('i-bfr').value);
     const Hct  = parseFloat($('i-hct').value)/100;
@@ -399,7 +651,7 @@
 
     inputs.forEach(i => i.v.textContent = $('i-'+i.k).value);
 
-    // Pump status row mirrors slider values
+    // Pump status row
     $('p-bfr').textContent  = BFR;
     $('p-pre').textContent  = Qpre_mLh;
     $('p-post').textContent = Qpost_mLh;
@@ -417,10 +669,7 @@
 
     const denomHct = BFR - Qpost - Qnet;
     const HctOut = denomHct > 0 ? (BFR * Hct) / denomHct * 100 : NaN;
-    const hctRise = Number.isFinite(HctOut) ? (HctOut / (Hct * 100)) : NaN;
-    // Filter INLET Hct = Hct after pre-dilution mixing, before the membrane.
-    // Hct_in = (BFR · Hct) / (BFR + Qpre)
-    const HctIn = (BFR + Qpre) > 0 ? (BFR * Hct) / (BFR + Qpre) * 100 : NaN;
+    const HctIn  = (BFR + Qpre) > 0 ? (BFR * Hct) / (BFR + Qpre) * 100 : NaN;
     const preDilutionDrop = Number.isFinite(HctIn) ? (Hct * 100 - HctIn) : 0;
 
     const totalEffluent = Qpre_mLh + Qpost_mLh + Qdial_mLh + Qnet_mLh;
@@ -432,68 +681,34 @@
     const Dna_mLmin = Dna_mLh / 60;
     const penalty = convDiff_mLh > 0 ? (1 - Dna_mLh / convDiff_mLh) * 100 : 0;
 
-    $('r-ff').innerHTML = NephSim.fmt.one(FF) + '<span class="machine-unit">%</span>';
-    $('r-hctout').innerHTML = NephSim.fmt.one(HctOut) + '<span class="readout-unit-inline">%</span>';
-    $('r-hctin').innerHTML  = NephSim.fmt.one(HctIn)  + '<span class="readout-unit-inline">%</span>';
-    $('r-dose').innerHTML   = NephSim.fmt.one(dose) + '<span class="readout-unit-inline">mL/kg/h</span>';
-    $('r-dna').innerHTML    = (Number.isFinite(Dna_mLmin) ? NephSim.fmt.int(Dna_mLmin) : '—') + '<span class="readout-unit-inline">mL/min</span>';
+    // Twin dials
+    paintDial(FF,     { warn: 20, bad: 25, max: 40 }, { dial: 'dial-ff',  arc: 'dial-ff-arc',  zone: 'r-ff-zone',     val: 'r-ff' });
+    paintDial(HctOut, { warn: 40, bad: 50, max: 70 }, { dial: 'dial-hct', arc: 'dial-hct-arc', zone: 'r-hctout-zone', val: 'r-hctout' });
+
+    // Info rows
+    $('r-hctin').innerHTML = (Number.isFinite(HctIn) ? NephSim.fmt.one(HctIn) : '—') + '<span class="info-unit">%</span>';
+    $('r-dose').innerHTML  = (Number.isFinite(dose) ? NephSim.fmt.one(dose) : '—')  + '<span class="info-unit">mL/kg/h</span>';
+    $('r-dna').innerHTML   = (Number.isFinite(Dna_mLmin) ? NephSim.fmt.int(Dna_mLmin) : '—') + '<span class="info-unit">mL/min</span>';
+
     $('r-pen-sub').textContent = penalty > 0.05
       ? `${NephSim.fmt.one(penalty)}% pre-dilution penalty`
       : 'no pre-dilution penalty';
-    $('r-hct-sub').textContent = Number.isFinite(hctRise)
-      ? `×${hctRise.toFixed(2)} vs pre-filter`
-      : '—';
     $('r-hctin-sub').textContent = preDilutionDrop > 0.1
       ? `−${preDilutionDrop.toFixed(1)} pts from PBP`
       : 'no pre-dilution';
 
-    const r = $('r-ff');
-    r.classList.remove('is-good','is-warn','is-bad');
-    const chip = $('r-chip');
-    chip.classList.remove('m-chip-good','m-chip-warn','m-chip-bad');
-
-    let msg, chipText;
-    if (!Number.isFinite(FF)) { msg = '—'; chipText = '—'; chip.classList.add('m-chip-good'); }
-    else if (FF < 20) {
-      r.classList.add('is-good'); chip.classList.add('m-chip-good');
-      msg = 'Comfortable filter conditions. Hemoconcentration is low.';
-      chipText = 'Safe';
-    } else if (FF < 25) {
-      r.classList.add('is-warn'); chip.classList.add('m-chip-warn');
-      msg = 'Borderline. Consider pre-dilution or higher Qb before clotting.';
-      chipText = 'Caution';
-    } else {
-      r.classList.add('is-bad'); chip.classList.add('m-chip-bad');
-      msg = 'High clotting risk. Act now — see lever recommendation.';
-      chipText = 'High risk';
-    }
-    chip.innerHTML = '<span class="dot"></span> ' + chipText;
-    $('r-msg').textContent = msg;
-
-    // KDIGO-graded dose coloring on the readout
-    const doseNum = $('r-dose');
-    doseNum.classList.remove('is-good','is-warn','is-bad');
+    // KDIGO-graded dose coloring (info row)
+    const doseEl = $('r-dose');
+    doseEl.classList.remove('is-good','is-warn','is-bad');
     if (Number.isFinite(dose)) {
-      if (dose < 18)       doseNum.classList.add('is-bad');
-      else if (dose < 20)  doseNum.classList.add('is-warn');
-      else if (dose <= 25) doseNum.classList.add('is-good');
-      else                 doseNum.classList.add('is-warn');
+      if (dose < 18)       doseEl.classList.add('is-bad');
+      else if (dose < 20)  doseEl.classList.add('is-warn');
+      else if (dose <= 25) doseEl.classList.add('is-good');
+      else                 doseEl.classList.add('is-warn');
     }
 
-    // Post-filter Hct coloring
-    const hctNum = $('r-hctout');
-    hctNum.classList.remove('is-good','is-warn','is-bad');
-    if (Number.isFinite(HctOut)) {
-      if (HctOut < 40)      hctNum.classList.add('is-good');
-      else if (HctOut < 50) hctNum.classList.add('is-warn');
-      else                  hctNum.classList.add('is-bad');
-    }
-
-    const pct = Math.max(0, Math.min(40, FF)) / 40 * 100;
-    $('r-marker').style.left = pct + '%';
-
+    paintViz(Hct, HctOut, FF);
     setRecommendation(FF, dose, Hct, BFR, Qpre_mLh, Qpost_mLh, Qdial_mLh, Qnet_mLh);
-    drawFilter(Hct, HctOut, FF);
   }
 
   function setRecommendation(FF, dose, Hct, BFR, Qpre, Qpost, Qdial, Qnet) {
@@ -528,36 +743,6 @@
         rec.innerHTML = `<strong>Dialed in.</strong> FF safe, dose 20–25 mL/kg/h. Recheck Hct trend and access pressures.`;
       }
     }
-  }
-
-  function drawFilter(Hct, HctOut, FF) {
-    // Hct-to-color: lighter pink at low Hct → deeper crimson at high
-    const colorAt = (h) => {
-      const t = Math.max(0, Math.min(1, (h - 0.15) / (0.60 - 0.15)));
-      const r = Math.round(232 + (130 - 232) * t);
-      const g = Math.round(120 + (24  - 120) * t);
-      const b = Math.round(132 + (40  - 132) * t);
-      return `rgb(${r},${g},${b})`;
-    };
-    const fluidIn  = colorAt(Hct);
-    const HctOutFrac = Number.isFinite(HctOut) ? HctOut/100 : Hct;
-    const fluidOut = colorAt(HctOutFrac);
-
-    // Paint the gradient bar via CSS custom properties
-    const bar = $('viz-bar');
-    bar.style.setProperty('--viz-in',  fluidIn);
-    bar.style.setProperty('--viz-out', fluidOut);
-
-    // Port dots — colored to match blood
-    document.querySelector('#viz-in  .viz-port-dot').style.background  = fluidIn;
-    document.querySelector('#viz-in  .viz-port-dot').style.boxShadow   = `0 0 14px ${fluidIn}, inset 0 -3px 6px rgba(0,0,0,0.25)`;
-    document.querySelector('#viz-out .viz-port-dot').style.background  = fluidOut;
-    document.querySelector('#viz-out .viz-port-dot').style.boxShadow   = `0 0 14px ${fluidOut}, inset 0 -3px 6px rgba(0,0,0,0.25)`;
-
-    // Numeric labels
-    $('viz-in-val').textContent  = `${(Hct*100).toFixed(0)}%`;
-    $('viz-out-val').textContent = Number.isFinite(HctOut) ? `${HctOut.toFixed(0)}%` : '—';
-    $('viz-eff').textContent     = Number.isFinite(FF) ? `${FF.toFixed(1)}%` : '—%';
   }
 
   inputs.forEach(i => i.el.addEventListener('input', compute));

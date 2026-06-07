@@ -19,11 +19,10 @@
     letter-spacing: -0.005em;
   }
   .preset-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
-  .mode-note {
+  .mode-hint {
     font-size: 12px; color: var(--text-muted); letter-spacing: -0.005em;
-    margin: 6px 0 22px; line-height: 1.5;
+    margin: 10px 0 0; line-height: 1.5;
   }
-  .mode-note b { color: var(--text-soft); font-weight: 600; }
 
   /* Hide the old machine bits we replaced */
   .machine-main, .machine-meter, .machine-statusrow, .machine-readouts { display: none !important; }
@@ -328,8 +327,27 @@
 
     <!-- INPUTS -->
     <aside class="panel">
-      <h2 class="panel-title">Pump settings · CVVHDF</h2>
-      <p class="mode-note">One universal mode. <b>Set pre + post = 0</b> to model <b>CVVHD</b>.</p>
+      <h2 class="panel-title">Pump settings</h2>
+
+      <!-- Modality selector — pre/post/dial visibility follows -->
+      <div class="field">
+        <div class="field-label" style="margin-bottom:8px;">Modality</div>
+        <div class="segmented" id="seg-mod">
+          <button data-value="CVVH">CVVH</button>
+          <button class="active" data-value="CVVHDF">CVVHDF</button>
+          <button data-value="CVVHD">CVVHD</button>
+        </div>
+        <p class="mode-hint" id="mode-hint">Replacement + dialysate · most flexible</p>
+      </div>
+
+      <!-- Patient -->
+      <div class="field">
+        <div class="field-row">
+          <span class="field-label">Patient hematocrit</span>
+          <span class="field-value"><span id="v-hct">30</span><span class="field-unit">%</span></span>
+        </div>
+        <input id="i-hct" type="range" min="15" max="60" step="1" value="30" />
+      </div>
 
       <div class="field">
         <div class="field-row">
@@ -339,15 +357,8 @@
         <input id="i-bfr" type="range" min="50" max="400" step="10" value="180" />
       </div>
 
-      <div class="field">
-        <div class="field-row">
-          <span class="field-label">Hematocrit</span>
-          <span class="field-value"><span id="v-hct">30</span><span class="field-unit">%</span></span>
-        </div>
-        <input id="i-hct" type="range" min="15" max="60" step="1" value="30" />
-      </div>
-
-      <div class="field">
+      <!-- Pre-dilution: shown for CVVH + CVVHDF -->
+      <div class="field" data-show="pre">
         <div class="field-row">
           <span class="field-label">Pre-dilution (PBP)</span>
           <span class="field-value"><span id="v-pre">1000</span><span class="field-unit">mL/h</span></span>
@@ -355,7 +366,8 @@
         <input id="i-pre" type="range" min="0" max="4000" step="100" value="1000" />
       </div>
 
-      <div class="field">
+      <!-- Post-dilution: shown for CVVH + CVVHDF -->
+      <div class="field" data-show="post">
         <div class="field-row">
           <span class="field-label">Post-dilution replacement</span>
           <span class="field-value"><span id="v-post">500</span><span class="field-unit">mL/h</span></span>
@@ -363,7 +375,8 @@
         <input id="i-post" type="range" min="0" max="4000" step="100" value="500" />
       </div>
 
-      <div class="field">
+      <!-- Dialysate: shown for CVVHDF + CVVHD -->
+      <div class="field" data-show="dial">
         <div class="field-row">
           <span class="field-label">Dialysate</span>
           <span class="field-value"><span id="v-dial">1500</span><span class="field-unit">mL/h</span></span>
@@ -556,34 +569,83 @@
   const $ = (id) => document.getElementById(id);
   const inputs = ['bfr','hct','pre','post','dial','net','wt'].map(k => ({k, el: $('i-'+k), v: $('v-'+k)}));
 
+  // Modality drives which flow sliders are visible + what numbers feed the math
+  let modality = 'CVVHDF';
+  const MOD_VIS = {
+    CVVH:   { pre: true,  post: true,  dial: false },
+    CVVHDF: { pre: true,  post: true,  dial: true  },
+    CVVHD:  { pre: false, post: false, dial: true  }
+  };
+  const MOD_HINT = {
+    CVVH:   'Pure convection · replacement only, no dialysate',
+    CVVHDF: 'Replacement + dialysate · most flexible',
+    CVVHD:  'Pure diffusion · dialysate only, no replacement'
+  };
+  const MOD_DEFAULTS = {
+    CVVH:   { pre: 1000, post: 1000, dial: 0    },
+    CVVHDF: { pre: 500,  post: 500,  dial: 1000 },
+    CVVHD:  { pre: 0,    post: 0,    dial: 2000 }
+  };
+
+  function applyModality(mod, opts) {
+    const vis = MOD_VIS[mod];
+    document.querySelectorAll('[data-show]').forEach(el => {
+      const k = el.dataset.show;
+      el.style.display = vis[k] ? '' : 'none';
+    });
+    $('mode-hint').textContent = MOD_HINT[mod];
+    $('m-mode').textContent = mod;
+
+    // Sync segmented button state
+    $('seg-mod').querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === mod);
+    });
+
+    // Apply mode default flows unless caller said skip
+    if (!opts || !opts.skipDefaults) {
+      const d = MOD_DEFAULTS[mod];
+      $('i-pre').value  = d.pre;
+      $('i-post').value = d.post;
+      $('i-dial').value = d.dial;
+    }
+    // Hidden flows are forced to 0 so the math doesn't include them
+    if (!vis.pre)  $('i-pre').value  = 0;
+    if (!vis.post) $('i-post').value = 0;
+    if (!vis.dial) $('i-dial').value = 0;
+
+    inputs.forEach(i => NephSim.bindRangeFill(i.el));
+  }
+
+  NephSim.bindSegmented($('seg-mod'), (val) => {
+    modality = val;
+    applyModality(val);
+    compute();
+  });
+
+  // Presets — include a modality token so the segmented control follows
   const presets = {
-    brcu:       { bfr: 200, hct: 30, pre: 500,  post: 500,  dial: 1000, net: 100, wt: 80 },
-    'high-hct': { bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
-    'post-only':{ bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
-    cvvhd:      { bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 }
+    brcu:       { mod: 'CVVHDF', bfr: 200, hct: 30, pre: 500,  post: 500,  dial: 1000, net: 100, wt: 80 },
+    'high-hct': { mod: 'CVVH',   bfr: 180, hct: 45, pre: 1000, post: 1000, dial: 0,    net: 100, wt: 75 },
+    'post-only':{ mod: 'CVVH',   bfr: 150, hct: 35, pre: 0,    post: 2200, dial: 0,    net: 150, wt: 75 },
+    cvvhd:      { mod: 'CVVHD',  bfr: 200, hct: 30, pre: 0,    post: 0,    dial: 2500, net: 100, wt: 80 }
   };
   $('presets').addEventListener('click', (e) => {
     const btn = e.target.closest('.preset-btn');
     if (!btn) return;
     const p = presets[btn.dataset.preset];
     if (!p) return;
-    $('i-bfr').value = p.bfr;
-    $('i-hct').value = p.hct;
-    $('i-pre').value = p.pre;
+    modality = p.mod;
+    applyModality(p.mod, { skipDefaults: true });
+    $('i-bfr').value  = p.bfr;
+    $('i-hct').value  = p.hct;
+    $('i-pre').value  = p.pre;
     $('i-post').value = p.post;
     $('i-dial').value = p.dial;
-    $('i-net').value = p.net;
-    $('i-wt').value = p.wt;
+    $('i-net').value  = p.net;
+    $('i-wt').value   = p.wt;
     inputs.forEach(i => NephSim.bindRangeFill(i.el));
     compute();
   });
-
-  function detectMode(pre, post, dial, net) {
-    if (pre === 0 && post === 0 && dial === 0) return net > 0 ? 'UF only' : 'IDLE';
-    if (pre === 0 && post === 0) return 'CVVHD';
-    if (dial === 0)              return 'CVVH';
-    return 'CVVHDF';
-  }
 
   // Dial circumference = 2π × 58
   const DIAL_CIRC = 2 * Math.PI * 58;
@@ -657,7 +719,7 @@
     $('p-post').textContent = Qpost_mLh;
     $('p-dial').textContent = Qdial_mLh;
     $('p-net').textContent  = Qnet_mLh;
-    $('m-mode').textContent = detectMode(Qpre_mLh, Qpost_mLh, Qdial_mLh, Qnet_mLh);
+    // (m-mode is driven by applyModality, not auto-detected)
 
     const Qpre  = Qpre_mLh / 60;
     const Qpost = Qpost_mLh / 60;
@@ -746,6 +808,7 @@
   }
 
   inputs.forEach(i => i.el.addEventListener('input', compute));
+  applyModality(modality, { skipDefaults: true });
   compute();
 })();
 </script>
